@@ -25,7 +25,7 @@ canvas{display:block}
 #weaponKeys{margin-top:6px;font-size:12px}
 #message{position:absolute;top:22%;left:50%;transform:translateX(-50%);font-size:20px;font-weight:bold;text-shadow:0 2px 5px black;text-align:center;max-width:90vw}
 #overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(3,7,14,.88);z-index:5}
-#menu,#lobby{width:min(620px,92vw);max-height:94vh;overflow:auto;padding:30px;text-align:center;background:#121d30;border:1px solid #425675;border-radius:18px;box-shadow:0 20px 70px #000}
+#menu,#lobby{width:min(660px,92vw);max-height:94vh;overflow:auto;padding:28px;text-align:center;background:#121d30;border:1px solid #425675;border-radius:18px;box-shadow:0 20px 70px #000}
 #lobby{display:none}
 h1{font-size:clamp(30px,6vw,52px);margin:0 0 8px;color:#ffc94b}
 #menu p,#lobby p{color:#c2cee0;line-height:1.5}
@@ -55,6 +55,18 @@ textarea{width:100%;height:64px;background:#0c1524;color:#dbe6f7;border:1px soli
 input[type=text]{width:min(280px,80%);background:#0c1524;color:#fff;border:1px solid #425675;border-radius:8px;padding:10px;font-size:15px;text-align:center;margin:6px 0}
 .slot{background:#0f1a2c;border:1px solid #425675;border-radius:12px;padding:12px;margin:10px 0;text-align:left}
 .slotStatus{color:#9bb0cf;font-size:13px;margin-left:8px}
+
+/* Map Selector Cards */
+.mapPicker{margin:14px 0 10px;text-align:center}
+.mapPickerLabel{font-size:13px;font-weight:bold;color:#ffc94b;letter-spacing:.5px;margin-bottom:8px;text-transform:uppercase}
+.mapGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:520px){.mapGrid{grid-template-columns:1fr}}
+.mapCard{background:#0f1a2c;border:2px solid #354966;border-radius:12px;padding:10px 10px 12px;cursor:pointer;text-align:left;transition:all .15s;color:#fff;margin:0;display:flex;flex-direction:column;gap:4px}
+.mapCard:hover{border-color:#7ea1d4;transform:translateY(-2px);filter:none}
+.mapCard.selected{border-color:#ffc94b;background:#182742;box-shadow:0 0 0 1px #ffc94b,0 6px 20px rgba(255,201,75,.2)}
+.mapSwatch{height:34px;border-radius:8px;margin-bottom:4px;display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid rgba(255,255,255,.15)}
+.mapCardTitle{font-weight:bold;font-size:14px;color:#fff}
+.mapCardDesc{font-size:11px;color:#9bb0cf;line-height:1.35;font-weight:normal}
 </style>
 </head>
 <body>
@@ -64,6 +76,7 @@ input[type=text]{width:min(280px,80%);background:#0c1524;color:#fff;border:1px s
       <div class="stat">❤️ Health: <span id="health">100</span></div>
       <div id="healthBar"><div id="healthFill"></div></div>
     </div>
+    <div class="panel stat">🗺️ <span id="hudMapName">Regular City</span></div>
     <div class="panel stat">🌊 Wave: <span id="wave">1</span></div>
     <div class="panel stat">⭐ Score: <span id="score">0</span></div>
     <div class="panel stat">👾 Monsters: <span id="remaining">0</span></div>
@@ -79,15 +92,21 @@ input[type=text]{width:min(280px,80%);background:#0c1524;color:#fff;border:1px s
   <div id="message"></div>
   <div id="weapon" class="panel"></div>
   <div id="toast"></div>
-  <div id="lockHint">Click the game to capture your mouse · Small shops have open doorways · Jump onto cars</div>
+  <div id="lockHint">Click the game to capture your mouse · Use cover & doorways · Jump onto cars & rocks</div>
 </div>
 <div id="hitFlash"></div>
 
 <div id="overlay">
   <div id="menu">
     <h1 id="menuTitle">MONSTER MAYHEM FPS</h1>
-    <p id="menuText">Defend the city from waves of goofy monsters!</p>
+    <p id="menuText">Defend the arena from waves of goofy monsters!</p>
     <p id="hint">WASD: Move · Mouse: Look · Hold Click or Q: Shoot · Space: Jump · Ctrl: Sprint · Shift: Scope (buy first) · 1-5: Switch gun</p>
+
+    <div id="menuMapPicker" class="mapPicker">
+      <div class="mapPickerLabel">Select Battleground Map</div>
+      <div id="menuMapGrid" class="mapGrid"></div>
+    </div>
+
     <div id="nameRow"><input id="nameInput" type="text" maxlength="14" placeholder="Your name (for co-op)"></div>
     <button id="startBtn">SOLO GAME</button>
     <button id="continueBtn" class="secondary" style="display:none">CONTINUE SOLO</button>
@@ -101,6 +120,10 @@ input[type=text]{width:min(280px,80%);background:#0c1524;color:#fff;border:1px s
     <p id="lobbyText"></p>
 
     <div id="hostPanel" style="display:none">
+      <div class="mapPicker">
+        <div class="mapPickerLabel">Co-op Map Selection</div>
+        <div id="hostMapGrid" class="mapGrid"></div>
+      </div>
       <div id="slots"></div>
       <p id="lobbyCount"></p>
       <button id="addSlotBtn" class="secondary">+ ADD PLAYER</button>
@@ -121,9 +144,29 @@ input[type=text]{width:min(280px,80%);background:#0c1524;color:#fff;border:1px s
   </div>
 </div>
 
-<script src="three.min.js"></script>
+<!-- Load local three.min.js if available, with automatic CDN fallback for standalone browser preview -->
+<script src="three.min.js" onerror="window.__needThreeCDN=true"></script>
 <script>
-(() => {
+(function loadThreeAndBoot(){
+  function startApp(){
+    if(typeof THREE==="undefined"){
+      document.body.innerHTML="<p style='padding:30px;font-size:18px'>Could not load Three.js. Check your internet connection or place three.min.js in the same folder.</p>";
+      return;
+    }
+    initMonsterMayhem();
+  }
+  if(typeof THREE!=="undefined"){
+    startApp();
+  }else{
+    const s=document.createElement("script");
+    s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+    s.onload=startApp;
+    s.onerror=startApp;
+    document.head.appendChild(s);
+  }
+})();
+
+function initMonsterMayhem(){
 "use strict";
 
 const $ = id => document.getElementById(id);
@@ -131,18 +174,70 @@ const r2 = v => Math.round(v*100)/100;
 const r3 = v => Math.round(v*1000)/1000;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-if(typeof THREE==="undefined"){
-  document.body.innerHTML="<p style='padding:30px;font-size:18px'>three.min.js is missing. Put it in the same folder as index.html (see the setup steps), then reload.</p>";
-  return;
-}
+/* =========================================
+   MAP DEFINITIONS & METADATA
+========================================= */
+
+const MAPS = {
+  city: {
+    id: "city",
+    name: "Regular City",
+    icon: "🏙️",
+    swatch: "linear-gradient(135deg,#5a8bb8,#87a9c5 55%,#4f7a3f)",
+    desc: "Bright downtown streets, central fountain plaza, open shops, and tall skyscrapers.",
+    sky: 0x87a9c5,
+    fogNear: 40,
+    fogFar: 118,
+    hemiSky: 0xd9ecff,
+    hemiGround: 0x53604b,
+    hemiInt: 2.0,
+    sunColor: 0xffffff,
+    sunInt: 2.1,
+    sunPos: [-30, 55, 25]
+  },
+  jungle: {
+    id: "jungle",
+    name: "Jungle",
+    icon: "🌴",
+    swatch: "linear-gradient(135deg,#245c38,#3e8a4c 55%,#6b5233)",
+    desc: "Dense rainforest canopy, ancient stone temple ruins, mossy boulders, and wooden bridges.",
+    sky: 0x5c8f6e,
+    fogNear: 26,
+    fogFar: 98,
+    hemiSky: 0xbef5c4,
+    hemiGround: 0x2c4223,
+    hemiInt: 1.95,
+    sunColor: 0xfff3c4,
+    sunInt: 2.0,
+    sunPos: [25, 60, -20]
+  },
+  destroyed: {
+    id: "destroyed",
+    name: "Destroyed City",
+    icon: "🏚️",
+    swatch: "linear-gradient(135deg,#4a3831,#7c5844 55%,#2b2929)",
+    desc: "Smoky dusk ruins, collapsed skyscrapers, burning barrels, craters, and broken highway.",
+    sky: 0x5b4a44,
+    fogNear: 28,
+    fogFar: 102,
+    hemiSky: 0xd99b78,
+    hemiGround: 0x2b2523,
+    hemiInt: 1.75,
+    sunColor: 0xff9e5e,
+    sunInt: 1.95,
+    sunPos: [-38, 42, -28]
+  }
+};
+const MAP_ORDER = ["city", "jungle", "destroyed"];
+let currentMapId = "city";
 
 /* =========================================
-   SCENE
+   SCENE & LIGHTING
 ========================================= */
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87a9c5);
-scene.fog = new THREE.Fog(0x87a9c5, 40, 115);
+scene.background = new THREE.Color(MAPS.city.sky);
+scene.fog = new THREE.Fog(MAPS.city.sky, MAPS.city.fogNear, MAPS.city.fogFar);
 
 const camera = new THREE.PerspectiveCamera(78, innerWidth/innerHeight, .1, 200);
 camera.rotation.order = "YXZ";
@@ -154,7 +249,8 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xd9ecff,0x53604b,2));
+const hemiLight = new THREE.HemisphereLight(0xd9ecff,0x53604b,2);
+scene.add(hemiLight);
 
 const sun = new THREE.DirectionalLight(0xffffff,2.1);
 sun.position.set(-30,55,25);
@@ -178,8 +274,23 @@ const materials = {
   roof:mat(0x5a4540),
   wood:mat(0x805332),
   metal:mat(0x687989),
-  dark:mat(0x252d3a)
+  dark:mat(0x252d3a),
+  jungleSoil:mat(0x3d4d2b,.96),
+  jungleGrass:mat(0x2f6b32,.92),
+  templeStone:mat(0x7c8075,.9),
+  templeMoss:mat(0x4b6e3c,.92),
+  bark:mat(0x543822,.95),
+  leafDark:mat(0x1f5928,.85),
+  leafLight:mat(0x3b873e,.82),
+  ruinAsphalt:mat(0x2d2e30,.97),
+  ruinConcrete:mat(0x66615c,.92),
+  ruinRebar:mat(0x4d3329,.75),
+  scorched:mat(0x24201e,.98)
 };
+
+// Container group for all current map geometry so we can cleanly swap maps
+const mapGroup = new THREE.Group();
+scene.add(mapGroup);
 
 function box(parent,x,y,z,w,h,d,material,cast=true,receive=true){
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
@@ -191,7 +302,7 @@ function box(parent,x,y,z,w,h,d,material,cast=true,receive=true){
 }
 
 /* =========================================
-   CITY (the same on every player's screen)
+   WORLD COLLISION, OCCUPANCY & NAVIGATION
 ========================================= */
 
 function mulberry32(a){
@@ -202,254 +313,15 @@ function mulberry32(a){
     return((t^t>>>14)>>>0)/4294967296;
   };
 }
-const rng=mulberry32(20241117);
 
-const solidBoxes=[];
+let solidBoxes = [];
+let shopRects = [];
+
 function addSolid(x,z,w,d,h=6){
   solidBoxes.push({x,z,w,d,h});
 }
 
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(120,120),materials.ground);
-floor.rotation.x=-Math.PI/2;
-floor.receiveShadow=true;
-scene.add(floor);
-
-// Boundary walls
-const boundaryMat=mat(0x46515d);
-box(scene,0,3,-58,120,6,2,boundaryMat);
-box(scene,0,3,58,120,6,2,boundaryMat);
-box(scene,-58,3,0,2,6,120,boundaryMat);
-box(scene,58,3,0,2,6,120,boundaryMat);
-addSolid(0,-58,120,2,6);
-addSolid(0,58,120,2,6);
-addSolid(-58,0,2,120,6);
-addSolid(58,0,2,120,6);
-
-// Road markings
-const dashCanvas=document.createElement("canvas");
-dashCanvas.width=16;
-dashCanvas.height=64;
-const dg=dashCanvas.getContext("2d");
-dg.fillStyle="#e8c43c";
-dg.fillRect(5,0,6,32);
-const dashTex=new THREE.CanvasTexture(dashCanvas);
-dashTex.wrapS=dashTex.wrapT=THREE.RepeatWrapping;
-dashTex.repeat.set(1,28);
-const dashMat=new THREE.MeshBasicMaterial({map:dashTex,transparent:true});
-
-for(const c of [-16,16]){
-  const v=new THREE.Mesh(new THREE.PlaneGeometry(.9,112),dashMat);
-  v.rotation.x=-Math.PI/2;
-  v.position.set(c,.06,0);
-  scene.add(v);
-
-  const h=new THREE.Mesh(new THREE.PlaneGeometry(.9,112),dashMat);
-  h.rotation.set(-Math.PI/2,0,Math.PI/2);
-  h.position.set(0,.065,c);
-  scene.add(h);
-}
-
-// Window texture for skyscrapers
-function makeWindowTex(){
-  const c=document.createElement("canvas");
-  c.width=128;
-  c.height=128;
-  const g=c.getContext("2d");
-  g.fillStyle="#9aa3ad";
-  g.fillRect(0,0,128,128);
-  for(let y=0;y<4;y++){
-    for(let x=0;x<4;x++){
-      g.fillStyle=rng()<.35?"#ffe9a8":"#2a3a4d";
-      g.fillRect(x*32+6,y*32+6,20,20);
-    }
-  }
-  const t=new THREE.CanvasTexture(c);
-  t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.colorSpace=THREE.SRGBColorSpace;
-  return t;
-}
-const baseWindowTex=makeWindowTex();
-const towerTints=[0x8d99a6,0xa88f7c,0x7e8aa0,0x9a8c86,0x6f7f8f,0xb0a38a];
-
-function tower(x,z,w,d,h){
-  const tint=towerTints[Math.floor(rng()*towerTints.length)];
-
-  const tx=baseWindowTex.clone();
-  tx.needsUpdate=true;
-  tx.repeat.set(Math.max(1,Math.round(d/4)),Math.max(1,Math.round(h/4)));
-
-  const tz=baseWindowTex.clone();
-  tz.needsUpdate=true;
-  tz.repeat.set(Math.max(1,Math.round(w/4)),Math.max(1,Math.round(h/4)));
-
-  const sideX=new THREE.MeshStandardMaterial({map:tx,color:tint,roughness:.85});
-  const sideZ=new THREE.MeshStandardMaterial({map:tz,color:tint,roughness:.85});
-  const roofM=mat(0x4a4f57);
-
-  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),[sideX,sideX,roofM,roofM,sideZ,sideZ]);
-  mesh.position.set(x,h/2,z);
-  mesh.castShadow=true;
-  mesh.receiveShadow=true;
-  scene.add(mesh);
-
-  box(scene,x+(rng()-.5)*w*.4,h+.5,z+(rng()-.5)*d*.4,1.8,1,1.4,materials.metal);
-  addSolid(x,z,w,d,h);
-}
-
-// Small shop you can walk into (door faces +z)
-function building(x,z,w,d,wallHeight=5){
-  const g=new THREE.Group();
-  g.position.set(x,0,z);
-  scene.add(g);
-
-  const t=.45;
-  const doorW=3.4;
-  const doorH=3.1;
-
-  box(g,0,.08,0,w,.16,d,materials.wallDark,false,true);
-
-  box(g,0,wallHeight/2,-d/2,w,wallHeight,t,materials.wall);
-  box(g,-w/2,wallHeight/2,0,t,wallHeight,d,materials.wall);
-  box(g,w/2,wallHeight/2,0,t,wallHeight,d,materials.wall);
-
-  const sideW=(w-doorW)/2;
-  box(g,-(doorW/2+sideW/2),wallHeight/2,d/2,sideW,wallHeight,t,materials.wall);
-  box(g,(doorW/2+sideW/2),wallHeight/2,d/2,sideW,wallHeight,t,materials.wall);
-  box(g,0,(wallHeight+doorH)/2,d/2,doorW,wallHeight-doorH,t,materials.wall);
-
-  box(g,0,wallHeight+.12,0,w+.5,.3,d+.5,materials.roof);
-
-  box(g,-doorW/2-.12,doorH/2,d/2+.04,.2,doorH,.25,materials.wood);
-  box(g,doorW/2+.12,doorH/2,d/2+.04,.2,doorH,.25,materials.wood);
-  box(g,0,doorH,d/2+.04,doorW+.45,.2,.25,materials.wood);
-
-  for(const side of [-1,1]){
-    const win=box(g,side*(w/2+.02),2,-.2,.08,1.35,1.8,materials.metal,false);
-    win.material=mat(0x8cc7d9,.3);
-  }
-
-  box(g,-w*.25,.55,-d*.2,1.8,1.1,1.1,materials.wood);
-  box(g,w*.25,.4,-d*.25,1.2,.8,1.3,materials.metal);
-
-  addSolid(x,z-d/2,w,t,wallHeight);
-  addSolid(x-w/2,z,t,d,wallHeight);
-  addSolid(x+w/2,z,t,d,wallHeight);
-  addSolid(x-(w+doorW)/4,z+d/2,(w-doorW)/2,t,wallHeight);
-  addSolid(x+(w+doorW)/4,z+d/2,(w-doorW)/2,t,wallHeight);
-}
-
-const shopRects=[];
-
-function lamp(x,z){
-  box(scene,x,2.5,z,.25,5,.25,materials.dark);
-  const light=new THREE.PointLight(0xffd58a,1.5,16);
-  light.position.set(x,4.8,z);
-  scene.add(light);
-  const bulb=new THREE.Mesh(new THREE.SphereGeometry(.3,12,10),mat(0xffdf91));
-  bulb.position.copy(light.position);
-  scene.add(bulb);
-}
-
-function buildPlaza(){
-  box(scene,0,.04,0,24,.08,24,mat(0x4f7a3f),false,true);
-  box(scene,0,.09,0,3,.02,24,mat(0xb9b2a0),false,true);
-  box(scene,0,.09,0,24,.02,3,mat(0xb9b2a0),false,true);
-
-  const base=new THREE.Mesh(new THREE.CylinderGeometry(2.6,2.8,.7,24),mat(0x9a9a9a));
-  base.position.set(0,.35,-7);
-  base.castShadow=true;
-  base.receiveShadow=true;
-  scene.add(base);
-  const water=new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,.1,24),mat(0x4aa3df,.2));
-  water.position.set(0,.72,-7);
-  scene.add(water);
-  const spout=new THREE.Mesh(new THREE.CylinderGeometry(.25,.35,1.6,12),mat(0xb0b0b0));
-  spout.position.set(0,1.4,-7);
-  scene.add(spout);
-  addSolid(0,-7,5.2,5.2,1.2);
-
-  for(const p of [[-8,-8],[8,-8],[-8,8],[8,8]]){
-    box(scene,p[0],1.2,p[1],.6,2.4,.6,materials.wood);
-    const crown=new THREE.Mesh(new THREE.SphereGeometry(1.8,14,10),mat(0x2f7d3a));
-    crown.position.set(p[0],3.6,p[1]);
-    crown.castShadow=true;
-    scene.add(crown);
-    addSolid(p[0],p[1],.9,.9,3);
-  }
-
-  for(const b of [[-5,6,3,1],[5,6,3,1]]){
-    box(scene,b[0],.45,b[1],b[2],.9,b[3],materials.wood);
-    addSolid(b[0],b[1],b[2],b[3],.9);
-  }
-
-  lamp(-10,-10);
-  lamp(10,-10);
-  lamp(-10,10);
-  lamp(10,10);
-}
-
-{
-  let blockIndex=0;
-  for(const bx of [-32,0,32]){
-    for(const bz of [-32,0,32]){
-      box(scene,bx,.025,bz,24,.05,24,materials.sidewalk,false,true);
-
-      if(bx===0&&bz===0){
-        buildPlaza();
-        continue;
-      }
-
-      const lots=[[-6.5,-6.5],[6.5,-6.5],[-6.5,6.5],[6.5,6.5]];
-      lots.forEach((l,li)=>{
-        const lx=bx+l[0];
-        const lz=bz+l[1];
-        if((blockIndex+li)%4===0){
-          building(lx,lz,8.2,8.2);
-          shopRects.push({x:lx,z:lz,w:9.4,d:9.4});
-        }else{
-          const h=10+Math.floor(rng()*5)*4;
-          tower(lx,lz,8.4,8.4,h);
-        }
-      });
-      blockIndex++;
-    }
-  }
-}
-
-function car(x,z,alongX,color){
-  const w=alongX?4.2:2;
-  const d=alongX?2:4.2;
-  box(scene,x,.55,z,w,.8,d,mat(color));
-  box(scene,x,1.15,z,alongX?2.2:1.7,.55,alongX?1.7:2.2,mat(0x9fc4d6,.3));
-  addSolid(x,z,w,d,1.5);
-}
-car(-16,-30,false,0xe85b57);
-car(17.5,26,false,0x4d8fe0);
-car(16,-8,false,0xf0c64e);
-car(-14.5,12,false,0x53bb73);
-car(-30,-16,true,0xe9a94e);
-car(30,17.5,true,0x9a67cf);
-car(-8,16,true,0xf3f0dd);
-car(8,-14.5,true,0x2aa198);
-car(-50,10,false,0xb0b7bd);
-car(50,-12,false,0x222831);
-
-function crate(x,z,size=2){
-  box(scene,x,size/2,z,size,size,size,materials.wood);
-  box(scene,x,size+.04,z,size*1.02,.12,size*1.02,materials.wallDark);
-  addSolid(x,z,size,size,size);
-}
-crate(-16,-24,2.3);
-crate(16,28,2.2);
-crate(-24,16,2.4);
-crate(26,-16,2.3);
-crate(0,-16,2.2);
-crate(0,16,2.4);
-crate(-50,-30,2.5);
-crate(50,30,2.5);
-
-/* ---------- Occupancy grid (for fast bullet / line-of-sight checks) ---------- */
-
+// Occupancy grid (for fast bullet / line-of-sight checks)
 const OCC=0.5, OCN=240, OCO=-60;
 const occH=new Float32Array(OCN*OCN);
 
@@ -465,7 +337,6 @@ function rasterSolid(b){
     }
   }
 }
-solidBoxes.forEach(rasterSolid);
 
 function heightAt(x,z){
   const i=Math.floor((x-OCO)/OCC);
@@ -485,14 +356,16 @@ function losClear(x1,z1,x2,z2,y){
   return true;
 }
 
-/* ---------- Navigation grid (monsters walk around buildings) ---------- */
-
+// Navigation grid (monsters walk around buildings/trees/ruins)
 const NAVN=116, NAVO=-58;
 const navBlocked=new Uint8Array(NAVN*NAVN);
 const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
 const bfsQueue=new Int32Array(NAVN*NAVN);
 
-(function buildNav(){
+function rebuildSpatialGrids(){
+  occH.fill(0);
+  solidBoxes.forEach(rasterSolid);
+
   const r=.5;
   const offs=[[0,0],[r,0],[-r,0],[0,r],[0,-r],[r*.7,r*.7],[-r*.7,r*.7],[r*.7,-r*.7],[-r*.7,-r*.7]];
   for(let j=0;j<NAVN;j++){
@@ -510,7 +383,8 @@ const bfsQueue=new Int32Array(NAVN*NAVN);
       navBlocked[j*NAVN+i]=blocked;
     }
   }
-})();
+  if(typeof fields!=="undefined")fields.clear();
+}
 
 function computeField(dist,tx,tz){
   dist.fill(65535);
@@ -591,6 +465,688 @@ function inShop(x,z){
 }
 
 /* =========================================
+   MAP BUILDERS (REGULAR CITY, JUNGLE, DESTROYED CITY)
+========================================= */
+
+function makeWindowTex(rng,litChance=0.35,bg="#9aa3ad",darkWin="#2a3a4d"){
+  const c=document.createElement("canvas");
+  c.width=128;
+  c.height=128;
+  const g=c.getContext("2d");
+  g.fillStyle=bg;
+  g.fillRect(0,0,128,128);
+  for(let y=0;y<4;y++){
+    for(let x=0;x<4;x++){
+      g.fillStyle=rng()<litChance?"#ffe9a8":darkWin;
+      g.fillRect(x*32+6,y*32+6,20,20);
+    }
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  if("colorSpace" in t)t.colorSpace=THREE.SRGBColorSpace;
+  return t;
+}
+
+function clearMapGeometry(){
+  while(mapGroup.children.length>0){
+    const obj=mapGroup.children[0];
+    mapGroup.remove(obj);
+  }
+  solidBoxes=[];
+  shopRects=[];
+}
+
+function buildPerimeter(wallMat,height=6){
+  box(mapGroup,0,height/2,-58,120,height,2,wallMat);
+  box(mapGroup,0,height/2,58,120,height,2,wallMat);
+  box(mapGroup,-58,height/2,0,2,height,120,wallMat);
+  box(mapGroup,58,height/2,0,2,height,120,wallMat);
+  addSolid(0,-58,120,2,height);
+  addSolid(0,58,120,2,height);
+  addSolid(-58,0,2,120,height);
+  addSolid(58,0,2,120,height);
+}
+
+/* ---------- 1. REGULAR CITY ---------- */
+function buildRegularCity(){
+  const rng=mulberry32(20241117);
+
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(120,120),materials.ground);
+  floor.rotation.x=-Math.PI/2;
+  floor.receiveShadow=true;
+  mapGroup.add(floor);
+
+  buildPerimeter(mat(0x46515d),6);
+
+  // Road markings
+  const dashCanvas=document.createElement("canvas");
+  dashCanvas.width=16;
+  dashCanvas.height=64;
+  const dg=dashCanvas.getContext("2d");
+  dg.fillStyle="#e8c43c";
+  dg.fillRect(5,0,6,32);
+  const dashTex=new THREE.CanvasTexture(dashCanvas);
+  dashTex.wrapS=dashTex.wrapT=THREE.RepeatWrapping;
+  dashTex.repeat.set(1,28);
+  const dashMat=new THREE.MeshBasicMaterial({map:dashTex,transparent:true});
+
+  for(const c of [-16,16]){
+    const v=new THREE.Mesh(new THREE.PlaneGeometry(.9,112),dashMat);
+    v.rotation.x=-Math.PI/2;
+    v.position.set(c,.06,0);
+    mapGroup.add(v);
+
+    const h=new THREE.Mesh(new THREE.PlaneGeometry(.9,112),dashMat);
+    h.rotation.set(-Math.PI/2,0,Math.PI/2);
+    h.position.set(0,.065,c);
+    mapGroup.add(h);
+  }
+
+  const baseWindowTex=makeWindowTex(rng,0.35);
+  const towerTints=[0x8d99a6,0xa88f7c,0x7e8aa0,0x9a8c86,0x6f7f8f,0xb0a38a];
+
+  function tower(x,z,w,d,h){
+    const tint=towerTints[Math.floor(rng()*towerTints.length)];
+    const tx=baseWindowTex.clone();
+    tx.needsUpdate=true;
+    tx.repeat.set(Math.max(1,Math.round(d/4)),Math.max(1,Math.round(h/4)));
+
+    const tz=baseWindowTex.clone();
+    tz.needsUpdate=true;
+    tz.repeat.set(Math.max(1,Math.round(w/4)),Math.max(1,Math.round(h/4)));
+
+    const sideX=new THREE.MeshStandardMaterial({map:tx,color:tint,roughness:.85});
+    const sideZ=new THREE.MeshStandardMaterial({map:tz,color:tint,roughness:.85});
+    const roofM=mat(0x4a4f57);
+
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),[sideX,sideX,roofM,roofM,sideZ,sideZ]);
+    mesh.position.set(x,h/2,z);
+    mesh.castShadow=true;
+    mesh.receiveShadow=true;
+    mapGroup.add(mesh);
+
+    box(mapGroup,x+(rng()-.5)*w*.4,h+.5,z+(rng()-.5)*d*.4,1.8,1,1.4,materials.metal);
+    addSolid(x,z,w,d,h);
+  }
+
+  function building(x,z,w,d,wallHeight=5){
+    const g=new THREE.Group();
+    g.position.set(x,0,z);
+    mapGroup.add(g);
+
+    const t=.45;
+    const doorW=3.4;
+    const doorH=3.1;
+
+    box(g,0,.08,0,w,.16,d,materials.wallDark,false,true);
+    box(g,0,wallHeight/2,-d/2,w,wallHeight,t,materials.wall);
+    box(g,-w/2,wallHeight/2,0,t,wallHeight,d,materials.wall);
+    box(g,w/2,wallHeight/2,0,t,wallHeight,d,materials.wall);
+
+    const sideW=(w-doorW)/2;
+    box(g,-(doorW/2+sideW/2),wallHeight/2,d/2,sideW,wallHeight,t,materials.wall);
+    box(g,(doorW/2+sideW/2),wallHeight/2,d/2,sideW,wallHeight,t,materials.wall);
+    box(g,0,(wallHeight+doorH)/2,d/2,doorW,wallHeight-doorH,t,materials.wall);
+
+    box(g,0,wallHeight+.12,0,w+.5,.3,d+.5,materials.roof);
+
+    box(g,-doorW/2-.12,doorH/2,d/2+.04,.2,doorH,.25,materials.wood);
+    box(g,doorW/2+.12,doorH/2,d/2+.04,.2,doorH,.25,materials.wood);
+    box(g,0,doorH,d/2+.04,doorW+.45,.2,.25,materials.wood);
+
+    for(const side of [-1,1]){
+      const win=box(g,side*(w/2+.02),2,-.2,.08,1.35,1.8,materials.metal,false);
+      win.material=mat(0x8cc7d9,.3);
+    }
+
+    box(g,-w*.25,.55,-d*.2,1.8,1.1,1.1,materials.wood);
+    box(g,w*.25,.4,-d*.25,1.2,.8,1.3,materials.metal);
+
+    addSolid(x,z-d/2,w,t,wallHeight);
+    addSolid(x-w/2,z,t,d,wallHeight);
+    addSolid(x+w/2,z,t,d,wallHeight);
+    addSolid(x-(w+doorW)/4,z+d/2,(w-doorW)/2,t,wallHeight);
+    addSolid(x+(w+doorW)/4,z+d/2,(w-doorW)/2,t,wallHeight);
+  }
+
+  function lamp(x,z){
+    box(mapGroup,x,2.5,z,.25,5,.25,materials.dark);
+    const light=new THREE.PointLight(0xffd58a,1.5,16);
+    light.position.set(x,4.8,z);
+    mapGroup.add(light);
+    const bulb=new THREE.Mesh(new THREE.SphereGeometry(.3,12,10),mat(0xffdf91));
+    bulb.position.copy(light.position);
+    mapGroup.add(bulb);
+  }
+
+  function buildPlaza(){
+    box(mapGroup,0,.04,0,24,.08,24,mat(0x4f7a3f),false,true);
+    box(mapGroup,0,.09,0,3,.02,24,mat(0xb9b2a0),false,true);
+    box(mapGroup,0,.09,0,24,.02,3,mat(0xb9b2a0),false,true);
+
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(2.6,2.8,.7,24),mat(0x9a9a9a));
+    base.position.set(0,.35,-7);
+    base.castShadow=true;
+    base.receiveShadow=true;
+    mapGroup.add(base);
+    const water=new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,.1,24),mat(0x4aa3df,.2));
+    water.position.set(0,.72,-7);
+    mapGroup.add(water);
+    const spout=new THREE.Mesh(new THREE.CylinderGeometry(.25,.35,1.6,12),mat(0xb0b0b0));
+    spout.position.set(0,1.4,-7);
+    mapGroup.add(spout);
+    addSolid(0,-7,5.2,5.2,1.2);
+
+    for(const p of [[-8,-8],[8,-8],[-8,8],[8,8]]){
+      box(mapGroup,p[0],1.2,p[1],.6,2.4,.6,materials.wood);
+      const crown=new THREE.Mesh(new THREE.SphereGeometry(1.8,14,10),mat(0x2f7d3a));
+      crown.position.set(p[0],3.6,p[1]);
+      crown.castShadow=true;
+      mapGroup.add(crown);
+      addSolid(p[0],p[1],.9,.9,3);
+    }
+
+    for(const b of [[-5,6,3,1],[5,6,3,1]]){
+      box(mapGroup,b[0],.45,b[1],b[2],.9,b[3],materials.wood);
+      addSolid(b[0],b[1],b[2],b[3],.9);
+    }
+
+    lamp(-10,-10);
+    lamp(10,-10);
+    lamp(-10,10);
+    lamp(10,10);
+  }
+
+  let blockIndex=0;
+  for(const bx of [-32,0,32]){
+    for(const bz of [-32,0,32]){
+      box(mapGroup,bx,.025,bz,24,.05,24,materials.sidewalk,false,true);
+      if(bx===0&&bz===0){
+        buildPlaza();
+        continue;
+      }
+      const lots=[[-6.5,-6.5],[6.5,-6.5],[-6.5,6.5],[6.5,6.5]];
+      lots.forEach((l,li)=>{
+        const lx=bx+l[0];
+        const lz=bz+l[1];
+        if((blockIndex+li)%4===0){
+          building(lx,lz,8.2,8.2);
+          shopRects.push({x:lx,z:lz,w:9.4,d:9.4});
+        }else{
+          const h=10+Math.floor(rng()*5)*4;
+          tower(lx,lz,8.4,8.4,h);
+        }
+      });
+      blockIndex++;
+    }
+  }
+
+  function car(x,z,alongX,color){
+    const w=alongX?4.2:2;
+    const d=alongX?2:4.2;
+    box(mapGroup,x,.55,z,w,.8,d,mat(color));
+    box(mapGroup,x,1.15,z,alongX?2.2:1.7,.55,alongX?1.7:2.2,mat(0x9fc4d6,.3));
+    addSolid(x,z,w,d,1.5);
+  }
+  car(-16,-30,false,0xe85b57);
+  car(17.5,26,false,0x4d8fe0);
+  car(16,-8,false,0xf0c64e);
+  car(-14.5,12,false,0x53bb73);
+  car(-30,-16,true,0xe9a94e);
+  car(30,17.5,true,0x9a67cf);
+  car(-8,16,true,0xf3f0dd);
+  car(8,-14.5,true,0x2aa198);
+  car(-50,10,false,0xb0b7bd);
+  car(50,-12,false,0x222831);
+
+  function crate(x,z,size=2){
+    box(mapGroup,x,size/2,z,size,size,size,materials.wood);
+    box(mapGroup,x,size+.04,z,size*1.02,.12,size*1.02,materials.wallDark);
+    addSolid(x,z,size,size,size);
+  }
+  crate(-16,-24,2.3);
+  crate(16,28,2.2);
+  crate(-24,16,2.4);
+  crate(26,-16,2.3);
+  crate(0,-16,2.2);
+  crate(0,16,2.4);
+  crate(-50,-30,2.5);
+  crate(50,30,2.5);
+}
+
+/* ---------- 2. JUNGLE MAP ---------- */
+function buildJungle(){
+  const rng=mulberry32(99887766);
+
+  // Rich forest floor
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(120,120),materials.jungleSoil);
+  floor.rotation.x=-Math.PI/2;
+  floor.receiveShadow=true;
+  mapGroup.add(floor);
+
+  // Mossy rock cliff perimeter
+  buildPerimeter(mat(0x3a4a2c),7);
+
+  // Dirt trails crisscrossing the jungle
+  const trailMat=mat(0x6e5336,.96);
+  box(mapGroup,0,.02,0,5,0.04,112,trailMat,false,true);
+  box(mapGroup,0,.025,0,112,0.04,5,trailMat,false,true);
+  box(mapGroup,-28,.02,0,3.5,0.04,90,trailMat,false,true);
+  box(mapGroup,28,.02,0,3.5,0.04,90,trailMat,false,true);
+
+  // Lush grass clearings
+  for(const [gx,gz,gw,gd] of [[0,0,22,22],[-32,-32,22,22],[32,-32,22,22],[-32,32,22,22],[32,32,22,22]]){
+    box(mapGroup,gx,.03,gz,gw,.05,gd,materials.jungleGrass,false,true);
+  }
+
+  // Central Ancient Mayan-style Pyramid Shrine
+  function buildTempleCenter(){
+    box(mapGroup,0,.45,-9,11,.9,11,materials.templeStone);
+    box(mapGroup,0,1.25,-9,8.2,.8,8.2,materials.templeMoss);
+    box(mapGroup,0,2.05,-9,5.4,.8,5.4,materials.templeStone);
+    box(mapGroup,0,2.95,-9,3.0,1.1,3.0,materials.templeMoss);
+    addSolid(0,-9,11,11,3.5);
+
+    // Glowing jade/gold altar torch
+    const orb=new THREE.Mesh(new THREE.OctahedronGeometry(.55,0),new THREE.MeshBasicMaterial({color:0x66ff99}));
+    orb.position.set(0,4.1,-9);
+    mapGroup.add(orb);
+    const pt=new THREE.PointLight(0x55ff88,1.8,22);
+    pt.position.set(0,4.5,-9);
+    mapGroup.add(pt);
+  }
+  buildTempleCenter();
+
+  // Walkable Stone Temple Sanctuaries (open doorway facing +z)
+  function jungleShrine(x,z,w=8.4,d=8.4,h=4.6){
+    const g=new THREE.Group();
+    g.position.set(x,0,z);
+    mapGroup.add(g);
+
+    const t=.55;
+    const doorW=3.4;
+    const doorH=3.0;
+    box(g,0,.08,0,w,.16,d,materials.templeMoss,false,true);
+    box(g,0,h/2,-d/2,w,h,t,materials.templeStone);
+    box(g,-w/2,h/2,0,t,h,d,materials.templeStone);
+    box(g,w/2,h/2,0,t,h,d,materials.templeStone);
+
+    const sideW=(w-doorW)/2;
+    box(g,-(doorW/2+sideW/2),h/2,d/2,sideW,h,t,materials.templeStone);
+    box(g,(doorW/2+sideW/2),h/2,d/2,sideW,h,t,materials.templeStone);
+    box(g,0,(h+doorH)/2,d/2,doorW,h-doorH,t,materials.templeMoss);
+
+    // Stepped stone roof
+    box(g,0,h+.25,0,w+.6,.5,d+.6,materials.templeMoss);
+    box(g,0,h+.7,0,w*.65,.45,d*.65,materials.templeStone);
+
+    // Torch inside
+    const torch=new THREE.PointLight(0xffb44c,1.3,14);
+    torch.position.set(0,2.6,-d*.25);
+    g.add(torch);
+
+    addSolid(x,z-d/2,w,t,h);
+    addSolid(x-w/2,z,t,d,h);
+    addSolid(x+w/2,z,t,d,h);
+    addSolid(x-(w+doorW)/4,z+d/2,(w-doorW)/2,t,h);
+    addSolid(x+(w+doorW)/4,z+d/2,(w-doorW)/2,t,h);
+    shopRects.push({x,z,w:w+1.2,d:d+1.2});
+  }
+
+  jungleShrine(-32,-32);
+  jungleShrine(32,-32);
+  jungleShrine(-32,32);
+  jungleShrine(32,32);
+
+  // Giant Jungle Trees with wide canopies
+  function jungleTree(x,z,scale=1){
+    const trunkH=(5.5+rng()*3.5)*scale;
+    const trunkR=.55*scale;
+    const trunk=new THREE.Mesh(
+      new THREE.CylinderGeometry(trunkR*.72,trunkR*1.25,trunkH,10),
+      materials.bark
+    );
+    trunk.position.set(x,trunkH/2,z);
+    trunk.castShadow=true;
+    trunk.receiveShadow=true;
+    mapGroup.add(trunk);
+
+    // Root buttresses
+    for(let k=0;k<4;k++){
+      const ang=k*Math.PI/2+rng()*.4;
+      box(mapGroup,x+Math.cos(ang)*trunkR*.9,.6*scale,z+Math.sin(ang)*trunkR*.9,.45*scale,1.2*scale,.45*scale,materials.bark);
+    }
+
+    // Layered foliage canopy
+    const c1=new THREE.Mesh(new THREE.DodecahedronGeometry(2.8*scale,1),materials.leafDark);
+    c1.position.set(x,trunkH+1.0*scale,z);
+    c1.castShadow=true;
+    mapGroup.add(c1);
+
+    const c2=new THREE.Mesh(new THREE.DodecahedronGeometry(2.1*scale,1),materials.leafLight);
+    c2.position.set(x+.9*scale,trunkH+2.1*scale,z-.6*scale);
+    c2.castShadow=true;
+    mapGroup.add(c2);
+
+    const colSize=Math.max(1.2,trunkR*2.2);
+    addSolid(x,z,colSize,colSize,trunkH+2);
+  }
+
+  // Mossy Boulders & Fallen Logs for tactical cover
+  function boulder(x,z,w,h,d){
+    const m=new THREE.Mesh(new THREE.DodecahedronGeometry(1,1),materials.templeStone);
+    m.scale.set(w*.62,h*.65,d*.62);
+    m.position.set(x,h*.45,z);
+    m.rotation.y=rng()*6.28;
+    m.castShadow=true;
+    m.receiveShadow=true;
+    mapGroup.add(m);
+    addSolid(x,z,w,d,h);
+  }
+
+  function fallenLog(x,z,alongX,len=4.6){
+    const w=alongX?len:1.1;
+    const d=alongX?1.1:len;
+    const cyl=new THREE.Mesh(new THREE.CylinderGeometry(.52,.58,len,10),materials.bark);
+    cyl.position.set(x,.52,z);
+    if(alongX)cyl.rotation.z=Math.PI/2;
+    else cyl.rotation.x=Math.PI/2;
+    cyl.castShadow=true;
+    cyl.receiveShadow=true;
+    mapGroup.add(cyl);
+    addSolid(x,z,w,d,1.1);
+  }
+
+  // Place trees systematically around quadrants while keeping spawn & main trails clear
+  const treeSpots=[
+    [-14,-14,1.2],[14,-14,1.15],[-14,14,1.15],[14,14,1.25],
+    [-21,-22,1.3],[-42,-22,1.1],[-22,-42,1.2],[-43,-43,1.35],
+    [21,-22,1.2],[42,-22,1.3],[22,-42,1.15],[43,-43,1.3],
+    [-21,22,1.25],[-42,22,1.2],[-22,42,1.1],[-43,43,1.35],
+    [21,22,1.2],[42,22,1.25],[22,42,1.3],[43,43,1.2],
+    [-12,-34,1.1],[12,-34,1.15],[-12,34,1.2],[12,34,1.1],
+    [-36,-11,1.15],[36,-11,1.2],[-36,11,1.1],[36,11,1.25],
+    [-49,-15,1.3],[-49,15,1.25],[49,-15,1.2],[49,15,1.3],
+    [-16,-49,1.25],[16,-49,1.3],[-16,49,1.2],[16,49,1.25]
+  ];
+  for(const [tx,tz,ts] of treeSpots)jungleTree(tx,tz,ts);
+
+  // Tactical cover rocks and logs
+  boulder(-8,6,2.4,1.5,2.0);
+  boulder(8,6,2.2,1.4,2.2);
+  boulder(-19,-8,2.8,1.8,2.4);
+  boulder(19,9,2.6,1.7,2.5);
+  boulder(0,18,3.0,1.6,2.2);
+  boulder(0,-22,2.8,1.7,2.4);
+  boulder(-38,0,2.6,1.8,2.6);
+  boulder(38,0,2.6,1.8,2.6);
+
+  fallenLog(-11,0,false,4.4);
+  fallenLog(11,0,false,4.4);
+  fallenLog(0,28,true,4.8);
+  fallenLog(0,-29,true,4.8);
+  fallenLog(-27,-16,true,4.2);
+  fallenLog(27,16,true,4.2);
+
+  // Decorative low fern clusters (non-solid visual detail)
+  for(let i=0;i<55;i++){
+    const fx=(rng()-.5)*102;
+    const fz=(rng()-.5)*102;
+    if(Math.hypot(fx,fz)<6)continue;
+    const fern=new THREE.Mesh(new THREE.ConeGeometry(.75,.7,6),materials.leafLight);
+    fern.position.set(fx,.35,fz);
+    mapGroup.add(fern);
+  }
+}
+
+/* ---------- 3. DESTROYED CITY MAP ---------- */
+function buildDestroyedCity(){
+  const rng=mulberry32(55443322);
+
+  // Cracked ash-covered asphalt ground
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(120,120),materials.ruinAsphalt);
+  floor.rotation.x=-Math.PI/2;
+  floor.receiveShadow=true;
+  mapGroup.add(floor);
+
+  // Broken perimeter wall with jagged heights
+  buildPerimeter(mat(0x3b3532),6.5);
+
+  // Damaged road strips
+  const fadedRoad=mat(0x42403e,.96);
+  for(const c of [-16,16]){
+    box(mapGroup,c,.02,0,6.5,.03,110,fadedRoad,false,true);
+    box(mapGroup,0,.025,c,110,.03,6.5,fadedRoad,false,true);
+  }
+
+  const ruinWindowTex=makeWindowTex(rng,0.08,"#59534f","#181717");
+
+  // Collapsed / jagged skyscraper ruins
+  function ruinedTower(x,z,w,d,h){
+    const tx=ruinWindowTex.clone();
+    tx.needsUpdate=true;
+    tx.repeat.set(Math.max(1,Math.round(d/4)),Math.max(1,Math.round(h/4)));
+
+    const tz=ruinWindowTex.clone();
+    tz.needsUpdate=true;
+    tz.repeat.set(Math.max(1,Math.round(w/4)),Math.max(1,Math.round(h/4)));
+
+    const sideX=new THREE.MeshStandardMaterial({map:tx,color:0x786e68,roughness:.92});
+    const sideZ=new THREE.MeshStandardMaterial({map:tz,color:0x6e645e,roughness:.92});
+    const topM=materials.scorched;
+
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),[sideX,sideX,topM,topM,sideZ,sideZ]);
+    mesh.position.set(x,h/2,z);
+    mesh.castShadow=true;
+    mesh.receiveShadow=true;
+    mapGroup.add(mesh);
+
+    // Jagged broken upper wall teeth & exposed steel rebar beams
+    for(let k=0;k<3;k++){
+      const ox=(rng()-.5)*(w*.6);
+      const oz=(rng()-.5)*(d*.6);
+      const bh=1.2+rng()*2.8;
+      box(mapGroup,x+ox,h+bh/2,z+oz,w*.32,bh,d*.32,materials.ruinConcrete);
+      box(mapGroup,x+ox*.8,h+bh+.6,z+oz*.8,.16,1.4,.16,materials.ruinRebar);
+    }
+
+    // Rubble skirt around base
+    box(mapGroup,x,0.35,z+d/2+.65,w*.85,.7,1.2,materials.ruinConcrete);
+    addSolid(x,z,w,d,h);
+  }
+
+  // Walkable Bombed-Out Bunker / Ruined Storefront (open doorway facing +z)
+  function ruinedBunker(x,z,w=8.4,d=8.4,h=4.4){
+    const g=new THREE.Group();
+    g.position.set(x,0,z);
+    mapGroup.add(g);
+
+    const t=.5;
+    const doorW=3.6;
+    const doorH=3.0;
+
+    box(g,0,.08,0,w,.16,d,materials.scorched,false,true);
+    box(g,0,h/2,-d/2,w,h,t,materials.ruinConcrete);
+    box(g,-w/2,h/2,0,t,h,d,materials.ruinConcrete);
+    box(g,w/2,h/2,0,t,h,d,materials.ruinConcrete);
+
+    const sideW=(w-doorW)/2;
+    box(g,-(doorW/2+sideW/2),h/2,d/2,sideW,h,t,materials.ruinConcrete);
+    box(g,(doorW/2+sideW/2),h/2,d/2,sideW,h,t,materials.ruinConcrete);
+    box(g,0,(h+doorH)/2,d/2,doorW,h-doorH,t,materials.ruinConcrete);
+
+    // Half-collapsed roof slab
+    box(g,-w*.15,h+.12,-d*.1,w*.72,.28,d*.82,materials.scorched);
+    // Sandbag / rubble barricade inside
+    box(g,0,.55,-d*.25,3.2,1.1,.9,materials.wallDark);
+
+    addSolid(x,z-d/2,w,t,h);
+    addSolid(x-w/2,z,t,d,h);
+    addSolid(x+w/2,z,t,d,h);
+    addSolid(x-(w+doorW)/4,z+d/2,(w-doorW)/2,t,h);
+    addSolid(x+(w+doorW)/4,z+d/2,(w-doorW)/2,t,h);
+    shopRects.push({x,z,w:w+1.2,d:d+1.2});
+  }
+
+  // Burning Fire Barrel (gives atmospheric orange glow)
+  function fireBarrel(x,z){
+    const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,1.15,12),materials.ruinRebar);
+    barrel.position.set(x,.58,z);
+    barrel.castShadow=true;
+    mapGroup.add(barrel);
+
+    const flame=new THREE.Mesh(new THREE.ConeGeometry(.34,.75,8),new THREE.MeshBasicMaterial({color:0xff7b29}));
+    flame.position.set(x,1.35,z);
+    mapGroup.add(flame);
+
+    const light=new THREE.PointLight(0xff6b24,1.6,15);
+    light.position.set(x,2.0,z);
+    mapGroup.add(light);
+
+    addSolid(x,z,.9,.9,1.2);
+  }
+
+  // Central Destroyed Plaza: Cracked monument & crater
+  function buildDestroyedPlaza(){
+    box(mapGroup,0,.03,0,22,.05,22,mat(0x3a3735),false,true);
+    // Broken monument pedestal
+    box(mapGroup,0,.7,-7.5,4.2,1.4,4.2,materials.ruinConcrete);
+    box(mapGroup,-.4,2.1,-7.5,1.5,1.6,1.5,materials.scorched);
+    addSolid(0,-7.5,4.4,4.4,2.6);
+
+    // Concrete jersey barriers around center
+    for(const [bx,bz,bw,bd] of [[-6,5.5,3.8,.75],[6,5.5,3.8,.75],[-8,-2,.75,3.6],[8,-2,.75,3.6]]){
+      box(mapGroup,bx,.5,bz,bw,1.0,bd,materials.ruinConcrete);
+      addSolid(bx,bz,bw,bd,1.0);
+    }
+
+    fireBarrel(-9,-9);
+    fireBarrel(9,-9);
+    fireBarrel(-9,9);
+    fireBarrel(9,9);
+  }
+
+  let blockIndex=0;
+  for(const bx of [-32,0,32]){
+    for(const bz of [-32,0,32]){
+      box(mapGroup,bx,.02,bz,23,.04,23,mat(0x474340),false,true);
+      if(bx===0&&bz===0){
+        buildDestroyedPlaza();
+        continue;
+      }
+      const lots=[[-6.5,-6.5],[6.5,-6.5],[-6.5,6.5],[6.5,6.5]];
+      lots.forEach((l,li)=>{
+        const lx=bx+l[0];
+        const lz=bz+l[1];
+        if((blockIndex+li)%4===0){
+          ruinedBunker(lx,lz,8.2,8.2);
+        }else{
+          const h=6+Math.floor(rng()*4)*3.5;
+          ruinedTower(lx,lz,8.2,8.2,h);
+        }
+      });
+      blockIndex++;
+    }
+  }
+
+  // Wrecked & scorched cars
+  function wreckedCar(x,z,alongX,tint=0x4a4542){
+    const w=alongX?4.2:2;
+    const d=alongX?2:4.2;
+    const body=box(mapGroup,x,.48,z,w,.7,d,mat(tint,.95));
+    body.rotation.z=alongX?.05:0;
+    body.rotation.x=alongX?0:.06;
+    box(mapGroup,x,.96,z,alongX?2.0:1.6,.45,alongX?1.6:2.0,materials.scorched);
+    addSolid(x,z,w,d,1.3);
+  }
+  wreckedCar(-16,-28,false,0x593935);
+  wreckedCar(17,25,false,0x394754);
+  wreckedCar(15.5,-9,false,0x615538);
+  wreckedCar(-15,13,false,0x3e4a3d);
+  wreckedCar(-28,-16,true,0x594433);
+  wreckedCar(29,16.5,true,0x453b4d);
+  wreckedCar(-9,16,true,0x4d4a46);
+  wreckedCar(9,-15.5,true,0x334543);
+
+  // Rubble piles & fallen concrete slabs
+  function rubblePile(x,z,w,h,d){
+    box(mapGroup,x,h/2,z,w,h,d,materials.ruinConcrete);
+    box(mapGroup,x+.2,h+.22,z-.15,w*.65,.45,d*.65,materials.scorched);
+    addSolid(x,z,w,d,h+.3);
+  }
+  rubblePile(-16,-19,2.8,1.3,2.2);
+  rubblePile(16,19,2.6,1.4,2.4);
+  rubblePile(-23,16,2.5,1.2,2.5);
+  rubblePile(24,-16,2.7,1.5,2.2);
+  rubblePile(0,-17,3.0,1.2,2.0);
+  rubblePile(0,17,3.0,1.3,2.1);
+  rubblePile(-48,-24,2.8,1.5,2.6);
+  rubblePile(48,24,2.8,1.5,2.6);
+}
+
+/* ---------- APPLY / SWITCH MAP ---------- */
+function applyMap(mapId, syncCoop=true){
+  if(!MAPS[mapId])mapId="city";
+  currentMapId=mapId;
+  const cfg=MAPS[mapId];
+
+  // Update atmosphere, sky, fog, and sun
+  scene.background.setHex(cfg.sky);
+  scene.fog.color.setHex(cfg.sky);
+  scene.fog.near=cfg.fogNear;
+  scene.fog.far=cfg.fogFar;
+
+  hemiLight.color.setHex(cfg.hemiSky);
+  hemiLight.groundColor.setHex(cfg.hemiGround);
+  hemiLight.intensity=cfg.hemiInt;
+
+  sun.color.setHex(cfg.sunColor);
+  sun.intensity=cfg.sunInt;
+  sun.position.set(cfg.sunPos[0],cfg.sunPos[1],cfg.sunPos[2]);
+
+  // Rebuild world geometry & collision/pathfinding grids
+  clearMapGeometry();
+  if(mapId==="jungle")buildJungle();
+  else if(mapId==="destroyed")buildDestroyedCity();
+  else buildRegularCity();
+
+  rebuildSpatialGrids();
+
+  // Update HUD & selector UIs
+  const hudMap=$("hudMapName");
+  if(hudMap)hudMap.textContent=cfg.name;
+  renderMapPickers();
+
+  if(syncCoop && mode==="host"){
+    broadcast({t:"map",map:currentMapId});
+  }
+}
+
+function renderMapPickers(){
+  for(const gridId of ["menuMapGrid","hostMapGrid"]){
+    const grid=$(gridId);
+    if(!grid)continue;
+    grid.innerHTML="";
+    for(const id of MAP_ORDER){
+      const m=MAPS[id];
+      const card=document.createElement("button");
+      card.type="button";
+      card.className="mapCard"+(currentMapId===id?" selected":"");
+      card.innerHTML=`
+        <div class="mapSwatch" style="background:${m.swatch}">${m.icon}</div>
+        <div class="mapCardTitle">${m.name}</div>
+        <div class="mapCardDesc">${m.desc}</div>
+      `;
+      card.onclick=()=>{
+        applyMap(id,true);
+        showToast("Map selected: "+m.name);
+      };
+      grid.appendChild(card);
+    }
+  }
+}
+
+/* =========================================
    WEAPONS
 ========================================= */
 
@@ -641,7 +1197,6 @@ const boomGeo=new THREE.SphereGeometry(1,14,10);
 
 const SPAWNS=[[0,0],[2.5,0],[-2.5,0],[0,2.5]];
 const PLAYER_COLORS=[0xffc94b,0x4d8fe0,0xe85b57,0x53bb73];
-const enemyColors=[0x55c875,0x9d6bd2,0xe9a94e,0x5da9dc,0xe56a82];
 
 const player={
   id:0,name:"Player",colorIdx:0,
@@ -714,7 +1269,7 @@ let nextEnemyId=1;
 let shopLock=false;
 let fieldTimer=0;
 let autoSaveTimer=0;
-const SAVE_KEY="monsterMayhem2_soloSave_v1";
+const SAVE_KEY="monsterMayhem2_soloSave_v2";
 let enemies=[];
 let projectiles=[];
 let fireballs=[];
@@ -742,6 +1297,9 @@ const net={
   posTimer:0
 };
 const RTC_CONFIG={iceServers:[]};
+
+// Build default map immediately on boot
+applyMap("city",false);
 
 function allPlayers(){
   return [player,...players.values()];
@@ -1023,6 +1581,7 @@ function saveSoloRun(){
   const data={
     version:1,
     savedAt:Date.now(),
+    map:currentMapId,
     wave,score,
     player:{
       x:r2(player.x),y:r2(player.y),z:r2(player.z),
@@ -1040,13 +1599,22 @@ function saveSoloRun(){
 
 function refreshContinueButton(){
   const btn=$("continueBtn");
-  if(btn)btn.style.display=readSoloSave()?"inline-block":"none";
+  if(!btn)return;
+  const saved=readSoloSave();
+  if(saved){
+    const mName=MAPS[saved.map]?MAPS[saved.map].name:"Regular City";
+    btn.textContent=`CONTINUE SOLO (${mName} · W${saved.wave})`;
+    btn.style.display="inline-block";
+  }else{
+    btn.style.display="none";
+  }
 }
 
 function continueSolo(){
   const data=readSoloSave();
   if(!data){refreshContinueButton();showToast("No saved solo game found.");return;}
   mode="solo";
+  applyMap(data.map||"city",false);
   for(const rec of players.values())removeRemote(rec);
   players.clear();
   clearEnemies();
@@ -1101,9 +1669,11 @@ function showMenu(title,text,opts={}){
   $("lobby").style.display="none";
   $("menuTitle").textContent=title;
   $("menuText").textContent=text;
+  $("menuMapPicker").style.display=opts.mapPicker?"block":"none";
   $("nameRow").style.display=opts.name?"block":"none";
   $("startBtn").style.display=opts.start?"inline-block":"none";
   if(opts.start)$("startBtn").textContent=opts.start;
+  $("continueBtn").style.display="none";
   $("hostBtn").style.display=opts.host?"inline-block":"none";
   $("joinBtn").style.display=opts.join?"inline-block":"none";
   $("upgrades").style.display="none";
@@ -1122,15 +1692,17 @@ function showLobby(role){
   $("lobby").style.display="block";
   $("hostPanel").style.display=role==="host"?"block":"none";
   $("joinPanel").style.display=role==="client"?"block":"none";
+  if(role==="host")renderMapPickers();
   uiOpen=true;
 }
 
 function showMainMenu(){
   showMenu(
     "MONSTER MAYHEM FPS",
-    "Defend the city from waves of goofy monsters — alone or with friends on the same Wi-Fi!",
-    {start:"SOLO GAME",host:true,join:true,name:true,onStart:startSolo}
+    "Choose a map and defend it from waves of goofy monsters — solo or in co-op!",
+    {start:"SOLO GAME",host:true,join:true,name:true,mapPicker:true,onStart:startSolo}
   );
+  renderMapPickers();
   refreshContinueButton();
 }
 
@@ -1309,7 +1881,7 @@ function startWave(){
   if(wave%5===0)spawnLeft+=1;
   spawnTimer=.6;
   $("wave").textContent=wave;
-  $("message").textContent="WAVE "+wave;
+  $("message").textContent="WAVE "+wave+" · "+MAPS[currentMapId].name.toUpperCase();
   setTimeout(()=>{
     if(phase==="play")$("message").textContent="";
   },1800);
@@ -1646,7 +2218,6 @@ function renderShop(){
       aList.appendChild(row);
     });
   }
-
 }
 
 function endGame(){
@@ -1657,12 +2228,14 @@ function endGame(){
   document.exitPointerLock?.();
   weapon.visible=true;
 
-  const text="You reached wave "+wave+" and scored "+score+" points!";
+  const text="You reached wave "+wave+" in "+MAPS[currentMapId].name+" and scored "+score+" points!";
   if(mode==="host"){
     broadcast({t:"over",wave,score});
-    showMenu("GAME OVER",text,{start:"PLAY AGAIN (EVERYONE)",onStart:hostRestart});
+    showMenu("GAME OVER",text,{start:"PLAY AGAIN (EVERYONE)",mapPicker:true,onStart:hostRestart});
+    renderMapPickers();
   }else{
-    showMenu("GAME OVER",text,{start:"PLAY AGAIN",onStart:startSolo});
+    showMenu("GAME OVER",text,{start:"PLAY AGAIN",mapPicker:true,onStart:startSolo});
+    renderMapPickers();
   }
 }
 
@@ -2169,7 +2742,7 @@ function openHost(){
   player.id=0;
 
   $("lobbyTitle").textContent="HOST CO-OP";
-  $("lobbyText").textContent="Everyone must be on the same Wi-Fi. For each friend: tap Add Player, send them the code, then paste their reply code and tap Connect.";
+  $("lobbyText").textContent="Everyone must be on the same Wi-Fi. Pick a map, tap Add Player, send them the code, then paste their reply code and tap Connect.";
   $("slots").innerHTML="";
   showLobby("host");
   hostAddSlot();
@@ -2258,7 +2831,7 @@ function hostPeerOpen(peer){
   peer.rec=rec;
   players.set(peer.id,rec);
   peer.ui.status.textContent="Connected!";
-  netSend(peer.dc,{t:"welcome",id:peer.id,colorIdx:rec.colorIdx});
+  netSend(peer.dc,{t:"welcome",id:peer.id,colorIdx:rec.colorIdx,map:currentMapId});
   updateLobbyButtons();
 }
 
@@ -2330,12 +2903,12 @@ function hostStart(){
       try{p.pc&&p.pc.close();}catch(e){}
     }
   }
-  broadcast({t:"start"});
+  broadcast({t:"start",map:currentMapId});
   startGame();
 }
 
 function hostRestart(){
-  broadcast({t:"start"});
+  broadcast({t:"start",map:currentMapId});
   startGame();
 }
 
@@ -2357,7 +2930,7 @@ function buildSnapshot(){
     r2(f.mesh.position.x),r2(f.mesh.position.y),r2(f.mesh.position.z)
   ]);
   return {
-    t:"s",w:wave,sc:score,rem:enemies.length+spawnLeft,ph:phase,
+    t:"s",map:currentMapId,w:wave,sc:score,rem:enemies.length+spawnLeft,ph:phase,
     pl,en,pr,fb,mn:mines.map(m=>[r2(m.x),r2(m.z),r2(m.life)]),ev:pendingBooms.slice()
   };
 }
@@ -2443,9 +3016,20 @@ function clientOnMessage(raw){
     net.myId=m.id;
     player.id=m.id;
     player.colorIdx=m.colorIdx;
+    if(m.map&&MAPS[m.map]){
+      applyMap(m.map,false);
+      $("joinStatus").textContent="Connected! Map: "+MAPS[m.map].name+". Waiting for host to start…";
+    }
+  }else if(m.t==="map"){
+    if(m.map&&MAPS[m.map]&&m.map!==currentMapId){
+      applyMap(m.map,false);
+      $("joinStatus").textContent="Host selected map: "+MAPS[m.map].name;
+    }
   }else if(m.t==="start"){
+    if(m.map&&MAPS[m.map]&&m.map!==currentMapId)applyMap(m.map,false);
     clientStart();
   }else if(m.t==="s"){
+    if(m.map&&MAPS[m.map]&&m.map!==currentMapId)applyMap(m.map,false);
     if(running)applySnapshot(m);
   }else if(m.t==="over"){
     clientGameOver(m);
@@ -2480,7 +3064,7 @@ function clientStart(){
   running=true;
   shopLock=false;
   $("message").textContent="";
-  showMenu("GET READY","The host started the game! Click to play.",{start:"CLICK TO PLAY",onStart:clientBegin});
+  showMenu("GET READY","Map: "+MAPS[currentMapId].name+". The host started the game! Click to play.",{start:"CLICK TO PLAY",onStart:clientBegin});
 }
 
 function clientBegin(){
@@ -2496,7 +3080,7 @@ function clientGameOver(m){
   weapon.visible=true;
   showMenu(
     "GAME OVER",
-    "You reached wave "+m.wave+" and scored "+m.score+" points! Waiting for the host to start another game…",
+    "You reached wave "+m.wave+" in "+MAPS[currentMapId].name+" and scored "+m.score+" points! Waiting for the host to start another game…",
     {}
   );
 }
@@ -2632,7 +3216,7 @@ function applySnapshot(s){
   }
   if(phase==="play"&&s.w!==lastWaveSeen){
     lastWaveSeen=s.w;
-    $("message").textContent="WAVE "+s.w;
+    $("message").textContent="WAVE "+s.w+" · "+MAPS[currentMapId].name.toUpperCase();
     setTimeout(()=>{
       if(phase==="play")$("message").textContent="";
     },1800);
@@ -2683,7 +3267,7 @@ document.addEventListener("pointerlockchange",()=>{
   if(mode==="solo"&&gameStarted&&running&&!uiOpen&&player.alive&&phase==="play"&&!pointerLocked){
     shooting=false;
     paused=true;
-    showMenu("PAUSED","Click resume when you're ready to continue.",{start:"RESUME",onStart:resumeSolo});
+    showMenu("PAUSED","Playing on "+MAPS[currentMapId].name+". Click resume when you're ready.",{start:"RESUME",onStart:resumeSolo});
   }
 });
 
@@ -2816,7 +3400,7 @@ window.addEventListener("resize",()=>{
 updateUI();
 showMainMenu();
 
-})();
+}
 </script>
 </body>
 </html>
