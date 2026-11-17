@@ -40,13 +40,6 @@ button.secondary{background:#243650;color:#fff;border:1px solid #60799e}
 .mate{font-size:13px;font-weight:bold;padding:8px 12px}
 .mateBar{height:6px;background:#333;border-radius:6px;margin-top:4px;overflow:hidden}
 .mateFill{height:100%;background:#42df78}
-#shopButton{position:fixed;right:18px;top:18px;z-index:3;pointer-events:auto;padding:10px 14px;font-size:13px}
-#shopPanel{display:none;position:fixed;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,92vw);max-height:85vh;overflow:auto;padding:22px;background:#121d30;border:1px solid #60799e;border-radius:16px;box-shadow:0 20px 70px #000;text-align:center}
-#shopPanel h2{color:#ffc94b;margin:0 0 6px}
-#shopPanel p{color:#c2cee0}
-.shopItem{display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;background:#0c1524;border:1px solid #425675;border-radius:10px;padding:10px;margin:8px 0}
-.shopItem small{display:block;color:#aebed4;margin-top:4px}
-.shopItem button{white-space:nowrap;margin:0;padding:9px 12px;font-size:13px}
 #lockHint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);display:none;font-weight:bold;text-shadow:0 2px 5px black;color:#ffc94b}
 textarea{width:100%;height:64px;background:#0c1524;color:#dbe6f7;border:1px solid #425675;border-radius:8px;padding:8px;font-size:11px;font-family:monospace;resize:none;margin-top:6px}
 input[type=text]{width:min(280px,80%);background:#0c1524;color:#fff;border:1px solid #425675;border-radius:8px;padding:10px;font-size:15px;text-align:center;margin:6px 0}
@@ -77,7 +70,6 @@ input[type=text]{width:min(280px,80%);background:#0c1524;color:#fff;border:1px s
     <span id="weaponInfo">Damage: 25 | Fire rate: Normal</span>
   </div>
   <div id="toast"></div>
-  <button id="shopButton" type="button">🔫 GUN SHOP (B)</button>
   <div id="lockHint">Click the game to capture your mouse</div>
 </div>
 <div id="hitFlash"></div>
@@ -208,29 +200,6 @@ box(scene,0,3,58,120,6,2,boundaryMat);
 box(scene,-58,3,0,2,6,120,boundaryMat);
 box(scene,58,3,0,2,6,120,boundaryMat);
 
-// City street grid: dark asphalt avenues with raised concrete sidewalks.
-const asphalt=mat(0x303943), sidewalk=mat(0x9a9da0), lanePaint=mat(0xe8d98a);
-function cityStrip(x,z,w,d,material,y=.025){
-  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),material);
-  m.rotation.x=-Math.PI/2; m.position.set(x,y,z); m.receiveShadow=true; scene.add(m);
-}
-cityStrip(0,0,13,116,asphalt,.025);
-cityStrip(0,0,116,13,asphalt,.026);
-cityStrip(-27,0,9,116,asphalt,.025);
-cityStrip(27,0,9,116,asphalt,.025);
-cityStrip(0,-27,116,9,asphalt,.025);
-cityStrip(0,27,116,9,asphalt,.025);
-for(const x of [-34,-20,20,34]){
-  cityStrip(x,0,2,116,sidewalk,.035);
-}
-for(const z of [-34,-20,20,34]){
-  cityStrip(0,z,116,2,sidewalk,.035);
-}
-for(let n=-5;n<=5;n++){
-  box(scene,n*10,.045,0,.12,.025,3.5,lanePaint,false,false);
-  box(scene,0,.045,n*10,3.5,.025,.12,lanePaint,false,false);
-}
-
 const buildings=[];
 const solidBoxes=[];
 
@@ -286,15 +255,6 @@ building(-19,-15,13,12);
 building(18,-17,14,13);
 building(-20,20,13,12);
 building(20,20,15,13);
-// Additional city blocks. Gaps between blocks form walkable streets and alleys.
-building(-42,-39,10,12,7);
-building(-3,-42,12,10,8);
-building(42,-40,10,12,7);
-building(-43,1,10,13,6);
-building(43,1,10,13,8);
-building(-42,40,11,10,7);
-building(1,42,13,10,8);
-building(42,40,10,10,7);
 
 function crate(x,z,size=2){
   box(scene,x,size/2,z,size,size,size,materials.wood);
@@ -394,14 +354,6 @@ let menuAction=null;
 let nextEnemyId=1;
 let enemies=[];
 let projectiles=[];
-let currentWeapon="goo";
-const GUNS={
-  goo:{name:"Goo Blaster",price:0,damage:25,fireDelay:330,spread:1,description:"Reliable starter blaster"},
-  smg:{name:"Street Sweeper SMG",price:250,damage:13,fireDelay:105,spread:1,description:"Very fast firing, lighter hits"},
-  shotgun:{name:"Boomstick Shotgun",price:400,damage:16,fireDelay:720,spread:5,description:"Five-pellet close-range blast"},
-  rifle:{name:"Pulse Rifle",price:650,damage:48,fireDelay:420,spread:1,description:"Powerful, accurate shots"},
-  minigun:{name:"Mini Mayhem",price:1000,damage:11,fireDelay:65,spread:1,description:"Extremely rapid fire"}
-};
 
 const clientEnemies=new Map();
 const clientProj=[];
@@ -410,8 +362,6 @@ const keys={};
 
 const projGeo=new THREE.SphereGeometry(.12,10,8);
 const projMat=mat(0xffd45b);
-const fireballGeo=new THREE.SphereGeometry(.32,14,12);
-const fireballMat=new THREE.MeshStandardMaterial({color:0xff5a16,emissive:0xff2600,emissiveIntensity:1.8,roughness:.35});
 
 const net={
   role:null,
@@ -633,7 +583,6 @@ function animateEnemy(e,time,faceX,faceZ){
 ========================================= */
 
 function showMenu(title,text,opts={}){
-  $("shopPanel").style.display="none";
   $("overlay").style.display="flex";
   $("menu").style.display="block";
   $("lobby").style.display="none";
@@ -664,7 +613,6 @@ function showLobby(role){
 }
 
 function showMainMenu(){
-  $("shopButton").style.display="none";
   showMenu(
     "MONSTER MAYHEM FPS",
     "Explore the arena, enter buildings, and survive waves of goofy monsters — alone or with friends on the same Wi-Fi!",
@@ -715,9 +663,7 @@ function updateUI(){
   $("score").textContent=score;
   $("wave").textContent=wave;
   $("remaining").textContent=mode==="client"?remainingShown:enemies.length+spawnLeft;
-  $("weapon").querySelector("b").textContent=GUNS[currentWeapon].name.toUpperCase();
   $("weaponInfo").textContent="Damage: "+player.damage+" | Fire rate: "+Math.round(1000/player.fireDelay)+" shots/sec";
-  $("score").textContent=score;
 
   let boss=null;
   if(mode==="client"){
@@ -755,8 +701,8 @@ function spawnEnemy(boss=false){
     z=Math.sin(angle)*radius;
     tries++;
     const n=nearestAlive(x,z);
-    if(canEnemyMove(x,z,.7)&&(!n||n.d>=13))break;
-  }while(tries<60);
+    if(!n||n.d>=13)break;
+  }while(tries<20);
 
   const ci=boss?9:Math.floor(Math.random()*enemyColors.length);
   const color=boss?0xe34b70:enemyColors[ci];
@@ -809,17 +755,7 @@ function spawnProjectile(ox,oy,oz,dx,dy,dz,dmg,owner){
   const v=new THREE.Vector3(dx,dy,dz);
   if(v.lengthSq()===0)v.set(0,0,-1);
   v.normalize().multiplyScalar(42);
-  projectiles.push({mesh,velocity:v,life:1.5,damage:dmg,owner,kind:"player"});
-}
-
-function spawnFireball(enemy,target){
-  const origin=new THREE.Vector3(enemy.x,1.65*enemy.scale,enemy.z);
-  const aim=new THREE.Vector3(target.x,1.05+(target.y||0),target.z);
-  const direction=aim.sub(origin).normalize();
-  const mesh=new THREE.Mesh(fireballGeo,fireballMat);
-  mesh.position.copy(origin);
-  scene.add(mesh);
-  projectiles.push({mesh,velocity:direction.multiplyScalar(13),life:5,damage:enemy.boss?18:12,owner:"enemy",kind:"fireball"});
+  projectiles.push({mesh,velocity:v,life:1.5,damage:dmg,owner});
 }
 
 function buildShots(){
@@ -997,7 +933,8 @@ function endGame(){
   }
 }
 
-function canMove(x,z,radius=.42){
+function canMove(x,z){
+  const radius=.42;
   if(Math.abs(x)>55||Math.abs(z)>55)return false;
 
   for(const b of solidBoxes){
@@ -1008,16 +945,6 @@ function canMove(x,z,radius=.42){
     if(dx*dx+dz*dz<radius*radius)return false;
   }
 
-  return true;
-}
-
-// Monsters cannot enter building footprints, even through open doorways.
-function canEnemyMove(x,z,radius=.55){
-  if(!canMove(x,z,radius))return false;
-  for(const b of buildings){
-    if(x+radius>b.x-b.w/2&&x-radius<b.x+b.w/2&&
-       z+radius>b.z-b.d/2&&z-radius<b.z+b.d/2)return false;
-  }
   return true;
 }
 
@@ -1088,36 +1015,20 @@ function updateEnemies(dt,time){
     const dz=t.p.z-e.z;
     const dist=t.d;
 
-    e.attackTimer-=dt;
-    // Monsters stop at walls and steer around city buildings.
-    if(dist>8){
+    if(dist>1.55){
       const step=e.speed*dt;
-      const nx=e.x+dx/dist*step;
-      const nz=e.z+dz/dist*step;
-      if(canEnemyMove(nx,e.z,.48))e.x=nx;
-      else if(canEnemyMove(e.x,nz,.48))e.z=nz;
-      else {
-        const sideX=-dz/dist,sideZ=dx/dist;
-        if(canEnemyMove(e.x+sideX*step,e.z+sideZ*step,.48)){e.x+=sideX*step;e.z+=sideZ*step;}
-        else if(canEnemyMove(e.x-sideX*step,e.z-sideZ*step,.48)){e.x-=sideX*step;e.z-=sideZ*step;}
+      e.x+=dx/dist*step;
+      e.z+=dz/dist*step;
+    }else{
+      e.attackTimer-=dt;
+      if(e.attackTimer<=0){
+        damagePlayerRec(t.p,e.damage);
+        e.attackTimer=.8;
       }
-    }
-    if(dist<2.0){
-      if(e.attackTimer<=0){damagePlayerRec(t.p,e.damage);e.attackTimer=.9;}
-    }else if(dist<32&&e.attackTimer<=0){
-      spawnFireball(e,t.p);
-      e.attackTimer=e.boss?1.8:2.7+Math.random()*1.1;
     }
 
     animateEnemy(e,time,t.p.x,t.p.z);
   }
-}
-
-function pointBlocked(x,z){
-  for(const b of solidBoxes){
-    if(x>=b.x-b.w/2&&x<=b.x+b.w/2&&z>=b.z-b.d/2&&z<=b.z+b.d/2)return true;
-  }
-  return false;
 }
 
 function updateProjectiles(dt){
@@ -1125,30 +1036,19 @@ function updateProjectiles(dt){
     const p=projectiles[i];
     p.mesh.position.addScaledVector(p.velocity,dt);
     p.life-=dt;
+
     let hit=false;
 
-    if(pointBlocked(p.mesh.position.x,p.mesh.position.z))hit=true;
+    for(let j=enemies.length-1;j>=0;j--){
+      const e=enemies[j];
+      const target=new THREE.Vector3(e.x,1.45*e.scale,e.z);
 
-    if(!hit&&p.kind==="fireball"){
-      for(const target of allPlayers()){
-        if(!target.alive)continue;
-        const center=new THREE.Vector3(target.x,1.0+(target.y||0),target.z);
-        if(p.mesh.position.distanceTo(center)<.9){
-          damagePlayerRec(target,p.damage);
-          hit=true;
-          break;
-        }
-      }
-    }else if(!hit){
-      for(let j=enemies.length-1;j>=0;j--){
-        const e=enemies[j];
-        const target=new THREE.Vector3(e.x,1.45*e.scale,e.z);
-        if(p.mesh.position.distanceTo(target)<1.05*e.scale){
-          e.hp-=p.damage;
-          hit=true;
-          if(e.hp<=0)removeEnemy(j);
-          break;
-        }
+      if(p.mesh.position.distanceTo(target)<1.05*e.scale){
+        e.hp-=p.damage;
+        hit=true;
+
+        if(e.hp<=0)removeEnemy(j);
+        break;
       }
     }
 
@@ -1158,6 +1058,7 @@ function updateProjectiles(dt){
     }
   }
 }
+
 function updateSpawning(dt){
   if(spawnLeft>0){
     spawnTimer-=dt;
@@ -1192,7 +1093,6 @@ function resetLocalPlayer(spawnIdx){
   player.damage=25;
   player.fireDelay=330;
   player.armor=0;
-  currentWeapon="goo";
   player.spread=1;
   player.jumpPower=8;
   player.alive=true;
@@ -1204,8 +1104,6 @@ function resetLocalPlayer(spawnIdx){
 }
 
 function startGame(){
-  $("shopButton").style.display="block";
-  $("shopPanel").style.display="none";
   clearEnemies();
   resetLocalPlayer(0);
 
@@ -1458,9 +1356,6 @@ function hostOnMessage(peer,raw){
       if(!Array.isArray(s)||s.length<7||!s.every(Number.isFinite))continue;
       spawnProjectile(s[0],s[1],s[2],s[3],s[4],s[5],Math.max(1,Math.min(500,s[6])),peer.id);
     }
-  }else if(m.t==="buyGun"){
-    const gun=GUNS[m.id];
-    if(gun&&gun.price>0&&score>=gun.price){score-=gun.price;sendSnapshot();}
   }else if(m.t==="stats"){
     const mh=Math.max(100,Math.min(1000,Number(m.maxHealth)||100));
     const ar=Math.max(0,Math.min(50,Number(m.armor)||0));
@@ -1499,7 +1394,7 @@ function buildSnapshot(){
   ]);
   const en=enemies.map(e=>[e.id,r2(e.x),r2(e.z),Math.ceil(e.hp),e.maxHp,e.boss?1:0,e.ci]);
   const pr=projectiles.slice(0,80).map(p=>[
-    r2(p.mesh.position.x),r2(p.mesh.position.y),r2(p.mesh.position.z),p.kind==="fireball"?1:0
+    r2(p.mesh.position.x),r2(p.mesh.position.y),r2(p.mesh.position.z)
   ]);
   return {t:"s",w:wave,sc:score,rem:enemies.length+spawnLeft,ph:phase,pl,en,pr};
 }
@@ -1600,7 +1495,6 @@ function clearClientWorld(){
 }
 
 function clientStart(){
-  $("shopButton").style.display="block";
   clearClientWorld();
   resetLocalPlayer(player.id);
   wave=1;
@@ -1714,12 +1608,8 @@ function applySnapshot(s){
     if(i<s.pr.length){
       clientProj[i].visible=true;
       clientProj[i].position.set(s.pr[i][0],s.pr[i][1],s.pr[i][2]);
-      clientProj[i].material=s.pr[i][3]?fireballMat:projMat;
-      clientProj[i].scale.setScalar(s.pr[i][3]?2.5:1);
     }else{
       clientProj[i].visible=false;
-      clientProj[i].scale.setScalar(1);
-      clientProj[i].material=projMat;
     }
   }
 
@@ -1760,55 +1650,6 @@ function updateClientWorld(dt,time){
 }
 
 /* =========================================
-   WEAPON SHOP
-========================================= */
-function renderShop(){
-  const area=$("shopItems");
-  area.innerHTML="";
-  for(const [id,gun] of Object.entries(GUNS)){
-    const row=document.createElement("div");
-    row.className="shopItem";
-    const info=document.createElement("div");
-    info.innerHTML="<b>"+gun.name+"</b><small>"+gun.description+" · Damage: "+gun.damage+"</small><small>Cost: "+(gun.price===0?"FREE":gun.price+" points")+"</small>";
-    const btn=document.createElement("button");
-    btn.textContent=currentWeapon===id?"EQUIPPED":(gun.price===0?"EQUIP":"BUY / EQUIP");
-    btn.disabled=currentWeapon===id||(gun.price>0&&score<gun.price);
-    btn.onclick=()=>{
-      if(gun.price>0){
-        if(mode==="client"){
-          netSend(net.dc,{t:"buyGun",id});
-        }else{
-          if(score<gun.price)return;
-          score-=gun.price;
-        }
-      }
-      currentWeapon=id;
-      player.damage=gun.damage;
-      player.fireDelay=gun.fireDelay;
-      player.spread=gun.spread;
-      updateUI();
-      renderShop();
-      showToast(gun.name+" equipped!");
-    };
-    row.append(info,btn);
-    area.appendChild(row);
-  }
-}
-function openShop(){
-  if(!running||phase!=="play"||uiOpen)return;
-  shooting=false;
-  $("shopPanel").style.display="block";
-  uiOpen=true;
-  document.exitPointerLock?.();
-  renderShop();
-}
-function closeShop(){
-  $("shopPanel").style.display="none";
-  uiOpen=false;
-  if(running&&phase==="play"&&player.alive)renderer.domElement.requestPointerLock();
-}
-
-/* =========================================
    INPUT
 ========================================= */
 
@@ -1822,8 +1663,6 @@ $("hostStartBtn").addEventListener("click",hostStart);
 $("makeReplyBtn").addEventListener("click",clientMakeReply);
 $("copyReplyBtn").addEventListener("click",()=>copyText($("replyCode"),$("copyReplyBtn")));
 $("lobbyBackBtn").addEventListener("click",()=>location.reload());
-$("shopButton").addEventListener("click",openShop);
-$("closeShop").addEventListener("click",closeShop);
 
 document.addEventListener("pointerlockchange",()=>{
   pointerLocked=document.pointerLockElement===renderer.domElement;
@@ -1848,8 +1687,6 @@ document.addEventListener("mousemove",e=>{
 document.addEventListener("keydown",e=>{
   if(e.target&&(e.target.tagName==="TEXTAREA"||e.target.tagName==="INPUT"))return;
   keys[e.code]=true;
-  if(e.code==="KeyB"&&!uiOpen){openShop();return;}
-  if(e.code==="Escape"&&$("shopPanel").style.display==="block"){closeShop();return;}
 
   if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)){
     e.preventDefault();
