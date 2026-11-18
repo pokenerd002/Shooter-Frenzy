@@ -59,7 +59,7 @@ input[type=text]{width:min(280px,80%);background:#0c1524;color:#fff;border:1px s
 /* Map Selector Cards */
 .mapPicker{margin:14px 0 10px;text-align:center}
 .mapPickerLabel{font-size:13px;font-weight:bold;color:#ffc94b;letter-spacing:.5px;margin-bottom:8px;text-transform:uppercase}
-.mapGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.mapGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 @media(max-width:520px){.mapGrid{grid-template-columns:1fr}}
 .mapCard{background:#0f1a2c;border:2px solid #354966;border-radius:12px;padding:10px 10px 12px;cursor:pointer;text-align:left;transition:all .15s;color:#fff;margin:0;display:flex;flex-direction:column;gap:4px}
 .mapCard:hover{border-color:#7ea1d4;transform:translateY(-2px);filter:none}
@@ -226,25 +226,9 @@ const MAPS = {
     sunColor: 0xff9e5e,
     sunInt: 1.95,
     sunPos: [-38, 42, -28]
-  },
-  xmas: {
-    id: "xmas",
-    name: "Christmas Workshop",
-    icon: "❄️",
-    swatch: "linear-gradient(135deg,#18365e,#2d6a8e 50%,#b8333a)",
-    desc: "Snowy North Pole village, walk-in toy workshops, festive Elves throwing snow/ice balls, exploding presents, and Santa Claus!",
-    sky: 0x162b47,
-    fogNear: 28,
-    fogFar: 108,
-    hemiSky: 0xcce8ff,
-    hemiGround: 0x6f8ca8,
-    hemiInt: 1.95,
-    sunColor: 0xe6f3ff,
-    sunInt: 2.0,
-    sunPos: [32, 58, 28]
   }
 };
-const MAP_ORDER = ["city", "jungle", "destroyed", "xmas"];
+const MAP_ORDER = ["city", "jungle", "destroyed"];
 let currentMapId = "city";
 
 /* =========================================
@@ -301,13 +285,7 @@ const materials = {
   ruinAsphalt:mat(0x2d2e30,.97),
   ruinConcrete:mat(0x66615c,.92),
   ruinRebar:mat(0x4d3329,.75),
-  scorched:mat(0x24201e,.98),
-  snow:mat(0xeef6fc,.9),
-  icePath:mat(0x9ecae6,.35),
-  xmasRed:mat(0xb8292f,.82),
-  xmasGreen:mat(0x226e3b,.85),
-  xmasGold:mat(0xf2c144,.45),
-  xmasLog:mat(0x6b4226,.9)
+  scorched:mat(0x24201e,.98)
 };
 
 // Container group for all current map geometry so we can cleanly swap maps
@@ -1106,287 +1084,6 @@ function buildDestroyedCity(){
   rubblePile(48,24,2.8,1.5,2.6);
 }
 
-/* ---------- 4. CHRISTMAS WORKSHOP MAP ---------- */
-function buildChristmasWorkshop(){
-  const rng=mulberry32(12252026);
-
-  // Crisp snowy ground floor
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(120,120),materials.snow);
-  floor.rotation.x=-Math.PI/2;
-  floor.receiveShadow=true;
-  mapGroup.add(floor);
-
-  // Candy-cane striped perimeter wall
-  buildPerimeter(materials.xmasRed,6);
-  for(let p=-54;p<=54;p+=6){
-    box(mapGroup,p,3.02,-57.95,2.4,6.04,2.12,materials.snow,false,true);
-    box(mapGroup,p,3.02,57.95,2.4,6.04,2.12,materials.snow,false,true);
-    box(mapGroup,-57.95,3.02,p,2.12,6.04,2.4,materials.snow,false,true);
-    box(mapGroup,57.95,3.02,p,2.12,6.04,2.4,materials.snow,false,true);
-  }
-
-  // Cobblestone & frosted ice walkways
-  for(const c of [-16,16]){
-    box(mapGroup,c,.02,0,6.2,.04,112,materials.icePath,false,true);
-    box(mapGroup,0,.025,c,112,.04,6.2,materials.icePath,false,true);
-  }
-
-  // Giant Candy Cane decoration
-  function candyCane(x,z,scale=1){
-    const g=new THREE.Group();
-    g.position.set(x,0,z);
-    mapGroup.add(g);
-    const segs=7;
-    for(let i=0;i<segs;i++){
-      const m=i%2===0?materials.xmasRed:materials.snow;
-      box(g,0,(i+.5)*.55*scale,0,.42*scale,.55*scale,.42*scale,m);
-    }
-    // Curved hook top
-    box(g,.32*scale,segs*.55*scale+.2*scale,0,.42*scale,.42*scale,.42*scale,materials.snow);
-    box(g,.68*scale,segs*.55*scale+.1*scale,0,.42*scale,.42*scale,.42*scale,materials.xmasRed);
-    box(g,.82*scale,segs*.55*scale-.25*scale,0,.42*scale,.42*scale,.42*scale,materials.snow);
-    addSolid(x,z,.8*scale,.8*scale,segs*.55*scale);
-  }
-
-  // Festive Snowman
-  function snowman(x,z,scale=1){
-    const g=new THREE.Group();
-    g.position.set(x,0,z);
-    mapGroup.add(g);
-    const b1=new THREE.Mesh(new THREE.SphereGeometry(.9*scale,14,12),materials.snow);
-    b1.position.y=.75*scale;
-    const b2=new THREE.Mesh(new THREE.SphereGeometry(.66*scale,14,12),materials.snow);
-    b2.position.y=1.85*scale;
-    const b3=new THREE.Mesh(new THREE.SphereGeometry(.46*scale,14,12),materials.snow);
-    b3.position.y=2.72*scale;
-    const nose=new THREE.Mesh(new THREE.ConeGeometry(.1*scale,.42*scale,8),mat(0xff7b1c));
-    nose.rotation.x=Math.PI/2;
-    nose.position.set(0,2.72*scale,.52*scale);
-    const hatBrim=new THREE.Mesh(new THREE.CylinderGeometry(.55*scale,.55*scale,.08*scale,14),materials.dark);
-    hatBrim.position.y=3.12*scale;
-    const hatTop=new THREE.Mesh(new THREE.CylinderGeometry(.34*scale,.36*scale,.52*scale,14),materials.dark);
-    hatTop.position.y=3.4*scale;
-    const scarf=new THREE.Mesh(new THREE.CylinderGeometry(.54*scale,.56*scale,.18*scale,14),materials.xmasRed);
-    scarf.position.y=2.34*scale;
-    g.add(b1,b2,b3,nose,hatBrim,hatTop,scarf);
-    g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
-    addSolid(x,z,1.7*scale,1.7*scale,3.5*scale);
-  }
-
-  // Festive Lamp Post with warm lantern & wreath
-  function xmasLamp(x,z){
-    box(mapGroup,x,2.4,z,.24,4.8,.24,materials.dark);
-    const wreath=new THREE.Mesh(new THREE.TorusGeometry(.42,.11,8,16),materials.xmasGreen);
-    wreath.position.set(x,3.3,z+.14);
-    mapGroup.add(wreath);
-    const lantern=new THREE.Mesh(new THREE.BoxGeometry(.48,.58,.48),new THREE.MeshBasicMaterial({color:0xffe28a}));
-    lantern.position.set(x,4.9,z);
-    mapGroup.add(lantern);
-    const light=new THREE.PointLight(0xffd27d,1.65,18);
-    light.position.set(x,4.8,z);
-    mapGroup.add(light);
-  }
-
-  // Central North Pole Plaza: Giant Christmas Tree & North Pole Sign
-  function buildNorthPolePlaza(){
-    box(mapGroup,0,.03,0,24,.06,24,materials.icePath,false,true);
-
-    // Giant Tiered Christmas Tree at (0, -7.5)
-    const tx=0,tz=-7.5;
-    box(mapGroup,tx,1.1,tz,1.3,2.2,1.3,materials.xmasLog);
-    const tiers=[[3.8,3.2,2.8],[3.0,2.8,4.6],[2.2,2.5,6.2],[1.4,2.1,7.6]];
-    tiers.forEach(([rad,h,py],idx)=>{
-      const cone=new THREE.Mesh(new THREE.ConeGeometry(rad,h,16),idx%2===0?materials.xmasGreen:materials.leafDark);
-      cone.position.set(tx,py,tz);
-      cone.castShadow=true;
-      cone.receiveShadow=true;
-      mapGroup.add(cone);
-    });
-    // Glowing golden star on top
-    const star=new THREE.Mesh(new THREE.OctahedronGeometry(.65,0),new THREE.MeshBasicMaterial({color:0xffe45e}));
-    star.position.set(tx,9.0,tz);
-    mapGroup.add(star);
-    const treeLight=new THREE.PointLight(0xffe17d,2.1,24);
-    treeLight.position.set(tx,7.5,tz);
-    mapGroup.add(treeLight);
-
-    // Glowing ornaments around the tree
-    const ornColors=[0xff3b4e,0xffd23f,0x45d4ff,0xff7ae5];
-    for(let i=0;i<16;i++){
-      const ang=i*Math.PI/4+(i%2)*.35;
-      const tier=Math.floor(i/4);
-      const r=(3.1-tier*.65);
-      const oy=2.1+tier*1.55;
-      const orn=new THREE.Mesh(
-        new THREE.SphereGeometry(.22,10,8),
-        new THREE.MeshBasicMaterial({color:ornColors[i%ornColors.length]})
-      );
-      orn.position.set(tx+Math.cos(ang)*r,oy,tz+Math.sin(ang)*r);
-      mapGroup.add(orn);
-    }
-    addSolid(tx,tz,5.6,5.6,8.5);
-
-    // Gift boxes stacked around the tree base
-    const giftMats=[materials.xmasRed,materials.xmasGreen,materials.xmasGold,mat(0x3a86ff)];
-    for(const [gx,gz,gs,gm] of [[-3.3,-6.2,1.2,0],[3.2,-6.5,1.1,1],[-2.8,-9.2,1.3,2],[2.9,-9.0,1.0,3]]){
-      box(mapGroup,gx,gs/2,gz,gs,gs,gs,giftMats[gm]);
-      box(mapGroup,gx,gs+.03,gz,gs*1.04,.1,gs*.22,materials.snow);
-      box(mapGroup,gx,gs+.03,gz,gs*.22,.1,gs*1.04,materials.snow);
-    }
-
-    // North Pole Signpost near (-6.5, 6.5)
-    box(mapGroup,-6.5,1.5,6.5,.28,3.0,.28,materials.xmasRed);
-    box(mapGroup,-6.5,2.45,6.5,2.1,.52,.16,materials.snow);
-    const globe=new THREE.Mesh(new THREE.SphereGeometry(.26,12,10),new THREE.MeshBasicMaterial({color:0xffdf6b}));
-    globe.position.set(-6.5,3.15,6.5);
-    mapGroup.add(globe);
-    addSolid(-6.5,6.5,.9,.9,3.2);
-
-    snowman(6.8,6.5,1.05);
-    candyCane(-9.5,-9.5,1.1);
-    candyCane(9.5,-9.5,1.1);
-    xmasLamp(-10,10);
-    xmasLamp(10,10);
-  }
-  buildNorthPolePlaza();
-
-  // Walk-In Toy Workshop Building (open doorway facing +z)
-  function toyWorkshop(x,z,w=8.4,d=8.4,wallHeight=5.0){
-    const g=new THREE.Group();
-    g.position.set(x,0,z);
-    mapGroup.add(g);
-
-    const t=.45;
-    const doorW=3.5;
-    const doorH=3.1;
-
-    box(g,0,.08,0,w,.16,d,materials.xmasLog,false,true);
-    box(g,0,wallHeight/2,-d/2,w,wallHeight,t,materials.xmasLog);
-    box(g,-w/2,wallHeight/2,0,t,wallHeight,d,materials.xmasLog);
-    box(g,w/2,wallHeight/2,0,t,wallHeight,d,materials.xmasLog);
-
-    const sideW=(w-doorW)/2;
-    box(g,-(doorW/2+sideW/2),wallHeight/2,d/2,sideW,wallHeight,t,materials.xmasLog);
-    box(g,(doorW/2+sideW/2),wallHeight/2,d/2,sideW,wallHeight,t,materials.xmasLog);
-    box(g,0,(wallHeight+doorH)/2,d/2,doorW,wallHeight-doorH,t,materials.xmasRed);
-
-    // Snow-covered pitched/layered festive roof
-    box(g,0,wallHeight+.16,0,w+.7,.34,d+.7,materials.xmasRed);
-    box(g,0,wallHeight+.42,0,w+.3,.24,d+.3,materials.snow);
-
-    // Candy-cane door trim
-    box(g,-doorW/2-.12,doorH/2,d/2+.04,.22,doorH,.26,materials.xmasGreen);
-    box(g,doorW/2+.12,doorH/2,d/2+.04,.22,doorH,.26,materials.xmasGreen);
-    box(g,0,doorH,d/2+.04,doorW+.5,.24,.26,materials.xmasGold);
-
-    // Warm glowing workshop windows
-    for(const side of [-1,1]){
-      const win=box(g,side*(w/2+.02),2.1,-.2,.08,1.4,1.9,materials.metal,false);
-      win.material=new THREE.MeshBasicMaterial({color:0xffdf8e});
-    }
-
-    // Interior toy-making workbench & gift shelves
-    box(g,-w*.24,.55,-d*.22,2.2,1.05,1.1,materials.wood);
-    box(g,-w*.24,1.25,-d*.22,.6,.5,.6,materials.xmasRed);
-    box(g,w*.24,.55,-d*.22,2.0,1.05,1.1,materials.xmasGreen);
-    box(g,w*.24,1.25,-d*.22,.55,.45,.55,materials.xmasGold);
-
-    const insideLight=new THREE.PointLight(0xffcf75,1.2,13);
-    insideLight.position.set(0,3.2,0);
-    g.add(insideLight);
-
-    addSolid(x,z-d/2,w,t,wallHeight);
-    addSolid(x-w/2,z,t,d,wallHeight);
-    addSolid(x+w/2,z,t,d,wallHeight);
-    addSolid(x-(w+doorW)/4,z+d/2,(w-doorW)/2,t,wallHeight);
-    addSolid(x+(w+doorW)/4,z+d/2,(w-doorW)/2,t,wallHeight);
-    shopRects.push({x,z,w:w+1.2,d:d+1.2});
-  }
-
-  // Tall Toy Factory Towers & Pine Trees around outer blocks
-  function toyFactoryTower(x,z,w,d,h){
-    const bodyM=rng()<.5?materials.xmasRed:materials.xmasGreen;
-    box(mapGroup,x,h/2,z,w,h,d,bodyM);
-    // Gold & snow trim bands
-    box(mapGroup,x,h+.2,z,w+.5,.4,d+.5,materials.snow);
-    box(mapGroup,x,h*.5,z,w+.15,.35,d+.15,materials.xmasGold);
-    // Candy chimney
-    box(mapGroup,x+w*.25,h+1.3,z-d*.25,1.2,2.2,1.2,materials.xmasRed);
-    box(mapGroup,x+w*.25,h+2.45,z-d*.25,1.35,.22,1.35,materials.snow);
-    addSolid(x,z,w,d,h);
-  }
-
-  function pineTree(x,z,scale=1){
-    box(mapGroup,x,.9*scale,z,.55*scale,1.8*scale,.55*scale,materials.xmasLog);
-    for(let k=0;k<3;k++){
-      const cone=new THREE.Mesh(
-        new THREE.ConeGeometry((2.1-k*.48)*scale,2.2*scale,12),
-        k===2?materials.snow:materials.xmasGreen
-      );
-      cone.position.set(x,(2.4+k*1.35)*scale,z);
-      cone.castShadow=true;
-      mapGroup.add(cone);
-    }
-    addSolid(x,z,1.1*scale,1.1*scale,5*scale);
-  }
-
-  let blockIndex=0;
-  for(const bx of [-32,0,32]){
-    for(const bz of [-32,0,32]){
-      if(bx===0&&bz===0)continue;
-      box(mapGroup,bx,.02,bz,23,.04,23,materials.icePath,false,true);
-      const lots=[[-6.5,-6.5],[6.5,-6.5],[-6.5,6.5],[6.5,6.5]];
-      lots.forEach((l,li)=>{
-        const lx=bx+l[0];
-        const lz=bz+l[1];
-        if((blockIndex+li)%4===0){
-          toyWorkshop(lx,lz,8.2,8.2);
-        }else if((blockIndex+li)%3===0){
-          pineTree(lx,lz,1.25);
-        }else{
-          const h=9+Math.floor(rng()*4)*3.5;
-          toyFactoryTower(lx,lz,8.2,8.2,h);
-        }
-      });
-      blockIndex++;
-    }
-  }
-
-  // Giant Present Crates & Santa Sleighs as street cover
-  function presentCrate(x,z,size=2.2,colorMat=materials.xmasRed){
-    box(mapGroup,x,size/2,z,size,size,size,colorMat);
-    box(mapGroup,x,size/2,z,size*1.03,size*.18,size*1.03,materials.xmasGold);
-    box(mapGroup,x,size+.05,z,size*1.03,.12,size*.24,materials.xmasGold);
-    box(mapGroup,x,size+.05,z,size*.24,.12,size*1.03,materials.xmasGold);
-    addSolid(x,z,size,size,size);
-  }
-  presentCrate(-16,-24,2.3,materials.xmasRed);
-  presentCrate(16,28,2.2,materials.xmasGreen);
-  presentCrate(-24,16,2.4,mat(0x3a86ff));
-  presentCrate(26,-16,2.3,materials.xmasRed);
-  presentCrate(0,-16,2.2,materials.xmasGreen);
-  presentCrate(0,16,2.4,materials.xmasRed);
-
-  // Decorative Sleighs along avenues
-  function sleigh(x,z,alongX){
-    const w=alongX?4.2:2.1;
-    const d=alongX?2.1:4.2;
-    box(mapGroup,x,.55,z,w,.75,d,materials.xmasRed);
-    box(mapGroup,x,.15,z,w*1.05,.16,d*1.05,materials.xmasGold);
-    box(mapGroup,x,1.05,z,alongX?2.0:1.7,.55,alongX?1.7:2.0,materials.xmasGreen);
-    addSolid(x,z,w,d,1.4);
-  }
-  sleigh(-16,-31,false);
-  sleigh(17,24,false);
-  sleigh(-30,-16,true);
-  sleigh(30,17,true);
-
-  snowman(-15,13,1.0);
-  snowman(15,-12,1.0);
-  candyCane(-48,12,1.2);
-  candyCane(48,-12,1.2);
-}
-
 /* ---------- APPLY / SWITCH MAP ---------- */
 function applyMap(mapId, syncCoop=true){
   if(!MAPS[mapId])mapId="city";
@@ -1411,7 +1108,6 @@ function applyMap(mapId, syncCoop=true){
   clearMapGeometry();
   if(mapId==="jungle")buildJungle();
   else if(mapId==="destroyed")buildDestroyedCity();
-  else if(mapId==="xmas")buildChristmasWorkshop();
   else buildRegularCity();
 
   rebuildSpatialGrids();
@@ -1419,8 +1115,6 @@ function applyMap(mapId, syncCoop=true){
   // Update HUD & selector UIs
   const hudMap=$("hudMapName");
   if(hudMap)hudMap.textContent=cfg.name;
-  const bossTitle=$("bossBar")?.querySelector("b");
-  if(bossTitle)bossTitle.textContent=mapId==="xmas"?"🎅 SANTA CLAUS":"BIG GOOFY BOSS";
   renderMapPickers();
 
   if(syncCoop && mode==="host"){
@@ -1473,8 +1167,6 @@ const ATTACHMENTS={
 };
 const ENEMY_TYPES=["runner","tank","bomber","spitter","splitter","brute"];
 const ENEMY_COLORS={runner:0x6ee7a8,tank:0x8b93a8,bomber:0xf59e42,spitter:0x68c7e8,splitter:0xc58bf2,brute:0xe87979,boss:0xe34b70};
-const ELF_COLORS={runner:0x2ecc71,tank:0x1e8449,bomber:0xe74c3c,spitter:0x3498db,splitter:0xf1c40f,brute:0xc0392b,boss:0xd62828};
-const ELF_NAMES={runner:"JINGLE ELF",tank:"NUTCRACKER ELF",bomber:"PRESENT BOMBER",spitter:"FROST ELF",splitter:"TWIN ELF",brute:"TOY GUARD ELF",boss:"SANTA CLAUS"};
 const ENEMY_TYPE_INDEX={runner:0,tank:1,bomber:2,spitter:3,splitter:4,brute:5,boss:6};
 const ENEMY_INDEX_TYPE=["runner","tank","bomber","spitter","splitter","brute","boss"];
 
@@ -1490,25 +1182,10 @@ const fbMat=new THREE.MeshBasicMaterial({color:0xff6a00});
 const fbGlowGeo=new THREE.SphereGeometry(.55,12,10);
 const fbGlowMat=new THREE.MeshBasicMaterial({color:0xffb04a,transparent:true,opacity:.35});
 
-// Snowball & Ice Ball projectiles for Christmas Workshop
-const snowBallMat=new THREE.MeshBasicMaterial({color:0xffffff});
-const snowGlowMat=new THREE.MeshBasicMaterial({color:0xd8f1ff,transparent:true,opacity:.45});
-const iceBallMat=new THREE.MeshBasicMaterial({color:0x4de6ff});
-const iceGlowMat=new THREE.MeshBasicMaterial({color:0x8cf4ff,transparent:true,opacity:.5});
-
-function makeFireballMesh(kind="fire"){
+function makeFireballMesh(){
   const g=new THREE.Group();
-  if(kind==="snow"){
-    g.add(new THREE.Mesh(fbGeo,snowBallMat));
-    g.add(new THREE.Mesh(fbGlowGeo,snowGlowMat));
-  }else if(kind==="ice"){
-    const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(.34,1),iceBallMat);
-    g.add(crystal);
-    g.add(new THREE.Mesh(fbGlowGeo,iceGlowMat));
-  }else{
-    g.add(new THREE.Mesh(fbGeo,fbMat));
-    g.add(new THREE.Mesh(fbGlowGeo,fbGlowMat));
-  }
+  g.add(new THREE.Mesh(fbGeo,fbMat));
+  g.add(new THREE.Mesh(fbGlowGeo,fbGlowMat));
   return g;
 }
 
@@ -1543,7 +1220,6 @@ const player={
   lastShot:0,
   alive:true,
   invulnerable:0,
-  chillTimer:0,
   ready:false
 };
 
@@ -1642,44 +1318,22 @@ function rewardCoins(owner,n){
    MODELS
 ========================================= */
 
-function makeHumanoid(color,boss=false,isPlayer=false,isCaster=false,theme="default"){
+function makeHumanoid(color,boss=false,isPlayer=false,isCaster=false){
   const group=new THREE.Group();
-  const isSanta=theme==="santa";
-  const isElf=theme==="elf";
-
-  const bodyMat=mat(isSanta?0xc81d25:color);
-  const skinMat=mat(isSanta||isElf?0xffcfa8:(boss?0xffa66d:color));
-  const darkMat=mat(isSanta?0x1b1e24:(isElf?0x1c542d:0x292d38));
-  const whiteTrimMat=mat(0xf7fbff);
-  const goldMat=mat(0xffd23f);
+  const bodyMat=mat(color);
+  const skinMat=mat(boss?0xffa66d:color);
+  const darkMat=mat(0x292d38);
   const eyeMat=mat(0xffffff);
   const pupilMat=mat(0x171717);
 
-  const scale=boss?1.75:1;
+  const scale=boss?1.65:1;
   const part=(x,y,z,w,h,d,m)=>{
     return box(group,x,y,z,w*scale,h*scale,d*scale,m);
   };
 
-  // Torso
   part(0,1.35,0,.85,1.05,.48,bodyMat);
-  if(isSanta){
-    // Belly, white coat trim, black belt & gold buckle
-    part(0,1.25,.24,.72,.78,.22,bodyMat);
-    part(0,1.35,.35,.16,1.02,.06,whiteTrimMat);
-    part(0,.88,0,.92,.16,.56,whiteTrimMat);
-    part(0,1.18,0,.93,.16,.58,darkMat);
-    part(0,1.18,.31,.24,.22,.08,goldMat);
-  }else if(isElf){
-    // Festive tunic collar, belt & gold buckle
-    part(0,1.2,.27,.52,.55,.12,bodyMat);
-    part(0,1.76,0,.9,.14,.54,whiteTrimMat);
-    part(0,1.12,0,.9,.14,.54,darkMat);
-    part(0,1.12,.29,.2,.18,.07,goldMat);
-  }else{
-    part(0,1.2,.27,.52,.55,.12,skinMat);
-  }
+  part(0,1.2,.27,.52,.55,.12,skinMat);
 
-  // Head
   const head=new THREE.Mesh(
     new THREE.SphereGeometry(.43*scale,18,14),skinMat
   );
@@ -1687,25 +1341,14 @@ function makeHumanoid(color,boss=false,isPlayer=false,isCaster=false,theme="defa
   head.castShadow=true;
   group.add(head);
 
-  // Ears (pointy elf ears when isElf!)
   for(const s of [-1,1]){
-    if(isElf){
-      const ear=new THREE.Mesh(
-        new THREE.ConeGeometry(.11*scale,.34*scale,8),skinMat
-      );
-      ear.position.set(s*.48*scale,2.24*scale,0);
-      ear.rotation.z=-s*1.15;
-      group.add(ear);
-    }else{
-      const ear=new THREE.Mesh(
-        new THREE.SphereGeometry(.17*scale,12,10),skinMat
-      );
-      ear.position.set(s*.4*scale,2.25*scale,0);
-      group.add(ear);
-    }
+    const ear=new THREE.Mesh(
+      new THREE.SphereGeometry(.17*scale,12,10),skinMat
+    );
+    ear.position.set(s*.4*scale,2.25*scale,0);
+    group.add(ear);
   }
 
-  // Eyes
   for(const s of [-1,1]){
     const eye=new THREE.Mesh(
       new THREE.SphereGeometry(.105*scale,12,10),eyeMat
@@ -1720,52 +1363,7 @@ function makeHumanoid(color,boss=false,isPlayer=false,isCaster=false,theme="defa
     group.add(pupil);
   }
 
-  // Santa beard & rosy nose OR mouth
-  if(isSanta){
-    const beard=new THREE.Mesh(
-      new THREE.SphereGeometry(.44*scale,14,12),whiteTrimMat
-    );
-    beard.scale.set(1.05,1.15,.85);
-    beard.position.set(0,1.92*scale,.22*scale);
-    group.add(beard);
-
-    const stache=new THREE.Mesh(
-      new THREE.BoxGeometry(.48*scale,.12*scale,.16*scale),whiteTrimMat
-    );
-    stache.position.set(0,2.08*scale,.42*scale);
-    group.add(stache);
-
-    const nose=new THREE.Mesh(
-      new THREE.SphereGeometry(.09*scale,10,8),mat(0xf26b6b)
-    );
-    nose.position.set(0,2.16*scale,.44*scale);
-    group.add(nose);
-  }else{
-    box(group,0,2.02*scale,.39*scale,.22*scale,.055*scale,.035*scale,darkMat);
-  }
-
-  // Santa Hat or Elf Pointy Hat
-  if(isSanta||isElf){
-    const hatMat=isSanta?mat(0xc81d25):mat(color===0xe74c3c?0x228b3b:0xc81d25);
-    const brim=new THREE.Mesh(
-      new THREE.CylinderGeometry(.46*scale,.48*scale,.14*scale,16),whiteTrimMat
-    );
-    brim.position.set(0,2.52*scale,0);
-    group.add(brim);
-
-    const cone=new THREE.Mesh(
-      new THREE.ConeGeometry(.42*scale,.85*scale,14),hatMat
-    );
-    cone.position.set(0,2.92*scale,-.05*scale);
-    cone.rotation.x=-.22;
-    group.add(cone);
-
-    const pom=new THREE.Mesh(
-      new THREE.SphereGeometry(.12*scale,10,8),whiteTrimMat
-    );
-    pom.position.set(0,3.3*scale,-.15*scale);
-    group.add(pom);
-  }
+  box(group,0,2.02*scale,.39*scale,.22*scale,.055*scale,.035*scale,darkMat);
 
   const arms=[];
   for(const s of [-1,1]){
@@ -1779,7 +1377,7 @@ function makeHumanoid(color,boss=false,isPlayer=false,isCaster=false,theme="defa
     arm.add(upper);
 
     const hand=new THREE.Mesh(
-      new THREE.SphereGeometry(.17*scale,10,8),isSanta?whiteTrimMat:skinMat
+      new THREE.SphereGeometry(.17*scale,10,8),skinMat
     );
     hand.position.y=-.58*scale;
     arm.add(hand);
@@ -1793,13 +1391,13 @@ function makeHumanoid(color,boss=false,isPlayer=false,isCaster=false,theme="defa
     leg.position.set(s*.22*scale,.9*scale,0);
 
     const limb=new THREE.Mesh(
-      new THREE.CapsuleGeometry(.15*scale,.55*scale,4,8),isSanta?bodyMat:darkMat
+      new THREE.CapsuleGeometry(.15*scale,.55*scale,4,8),darkMat
     );
     limb.position.y=-.34*scale;
     leg.add(limb);
 
     const foot=new THREE.Mesh(
-      new THREE.BoxGeometry(.28*scale,.17*scale,.44*scale),isSanta||isElf?darkMat:skinMat
+      new THREE.BoxGeometry(.28*scale,.17*scale,.42*scale),skinMat
     );
     foot.position.set(0,-.68*scale,.1*scale);
     leg.add(foot);
@@ -1809,10 +1407,9 @@ function makeHumanoid(color,boss=false,isPlayer=false,isCaster=false,theme="defa
 
   let orb=null;
   if(isCaster||boss){
-    const orbColor=isSanta||isElf?0x66e3ff:0xff7a1a;
     orb=new THREE.Mesh(
       new THREE.SphereGeometry(.2*scale,10,8),
-      new THREE.MeshBasicMaterial({color:orbColor})
+      new THREE.MeshBasicMaterial({color:0xff7a1a})
     );
     orb.position.set(0,-.82*scale,.05);
     arms[1].add(orb);
@@ -1926,10 +1523,10 @@ function animateEnemy(e,time,faceX,faceZ){
 
 /* ---------- Explosions (visual only) ---------- */
 
-function addExplosion(x,y,z,r,color=0xff9a3c){
+function addExplosion(x,y,z,r){
   const m=new THREE.Mesh(
     boomGeo,
-    new THREE.MeshBasicMaterial({color,transparent:true,opacity:.78})
+    new THREE.MeshBasicMaterial({color:0xff9a3c,transparent:true,opacity:.75})
   );
   m.position.set(x,y,z);
   m.scale.setScalar(.3);
@@ -1949,13 +1546,13 @@ function updateExplosions(dt){
       continue;
     }
     e.m.scale.setScalar(e.r*(.3+.7*k));
-    e.m.material.opacity=.78*(1-k);
+    e.m.material.opacity=.75*(1-k);
   }
 }
 
-function boom(x,y,z,r,color=0xff9a3c){
-  addExplosion(x,y,z,r,color);
-  if(mode==="host")pendingBooms.push([r2(x),r2(y),r2(z),r,color]);
+function boom(x,y,z,r){
+  addExplosion(x,y,z,r);
+  if(mode==="host")pendingBooms.push([r2(x),r2(y),r2(z),r]);
 }
 
 /* =========================================
@@ -2225,39 +1822,34 @@ function pickSpawn(){
 
 function spawnEnemy(boss=false,forcedKind=null,splitChild=false,forcedSpawn=null){
   const sp=forcedSpawn||pickSpawn();
-  const isXmas=currentMapId==="xmas";
   const kind=boss?"boss":(forcedKind||ENEMY_TYPES[Math.floor(Math.random()*ENEMY_TYPES.length)]);
   const ci=ENEMY_TYPES.indexOf(kind);
-  const color=isXmas?(ELF_COLORS[kind]||ELF_COLORS.boss):(ENEMY_COLORS[kind]||ENEMY_COLORS.boss);
-  // In Christmas Workshop, both spitter (Frost Elf), runner/brute elves, and Santa throw snowballs/ice balls!
-  const caster=isXmas?(kind==="spitter"||kind==="runner"||kind==="brute"||boss):(kind==="spitter"||boss);
-  const theme=isXmas?(boss?"santa":"elf"):"default";
-  const model=makeHumanoid(color,boss,false,caster,theme);
-  const size=kind==="tank"?1.26:kind==="runner"?.82:kind==="brute"?1.14:kind==="splitter"?.86:1;
+  const color=ENEMY_COLORS[kind]||ENEMY_COLORS.boss;
+  const caster=kind==="spitter"||boss;
+  const model=makeHumanoid(color,boss,false,caster);
+  const size=kind==="tank"?1.28:kind==="runner"?.82:kind==="brute"?1.16:kind==="splitter"?.88:1;
   if(!boss)model.group.scale.setScalar(size);
-  const labelText=isXmas?(ELF_NAMES[kind]||"ELF"):(kind==="boss"?"BOSS":kind.toUpperCase());
-  const tag=makeLabel(labelText);
-  tag.position.y=boss?4.6:3.2;
-  tag.scale.set(2.0,.48,1);
+  const tag=makeLabel(kind==="boss"?"BOSS":kind.toUpperCase());
+  tag.position.y=boss?4.4:3.1;
+  tag.scale.set(1.8,.45,1);
   model.group.add(tag);
   model.group.position.set(sp.x,0,sp.z);
   scene.add(model.group);
 
   const pf=1+.5*(allPlayers().length-1);
-  let hp=Math.round((boss?660+wave*100:kind==="tank"?145+wave*20:kind==="brute"?110+wave*17:kind==="splitter"?52+wave*9:kind==="runner"?42+wave*7:kind==="bomber"?68+wave*11:72+wave*12)*pf);
+  let hp=Math.round((boss?620+wave*95:kind==="tank"?145+wave*20:kind==="brute"?110+wave*17:kind==="splitter"?52+wave*9:kind==="runner"?42+wave*7:kind==="bomber"?68+wave*11:72+wave*12)*pf);
   if(splitChild)hp=Math.round(hp*.42);
-  const speedBase=kind==="runner"?5.1:kind==="tank"?1.65:kind==="brute"?2.0:kind==="bomber"?3.6:kind==="splitter"?3.25:kind==="spitter"?2.25:boss?2.4:2.8+Math.random()*.7;
+  const speedBase=kind==="runner"?5.1:kind==="tank"?1.65:kind==="brute"?2.0:kind==="bomber"?3.6:kind==="splitter"?3.25:kind==="spitter"?2.25:boss?2.35:2.8+Math.random()*.7;
   enemies.push({
-    ...model,id:nextEnemyId++,ci:Math.max(0,ci),kind,isXmas,caster,
+    ...model,id:nextEnemyId++,ci:Math.max(0,ci),kind,
     x:sp.x,z:sp.z,hp,maxHp:hp,
     speed:(speedBase+wave*.045)*(splitChild?.9:1),
     damage:boss?22:kind==="brute"?16:kind==="tank"?13:kind==="bomber"?10:kind==="runner"?7:9,
     boss,splitChild,phase:Math.random()*6.28,attackTimer:0,
-    castTimer:boss?1.8:1.5+Math.random()*2.2,windup:0,wind:false,
+    castTimer:boss?2:1.5+Math.random()*2,windup:0,wind:false,
     los:false,losTimer:0,strafe:Math.random()<.5?1:-1,
     strafeT:1+Math.random()*2,fbDamage:boss?19:Math.round(9+wave*.8),
-    fbSpeed:Math.min(26,15+wave*.4),
-    mineTimer:isXmas?(boss?3.8+Math.random()*2:6.5+Math.random()*4):(kind==="spitter"?5+Math.random()*4:boss?7+Math.random()*3:0),
+    fbSpeed:Math.min(25,14+wave*.4),mineTimer:kind==="spitter"?5+Math.random()*4:boss?7+Math.random()*3:0,
     specialTimer:boss?5+Math.random()*3:0,explodeRadius:kind==="bomber"?4.2:0
   });
 }
@@ -2442,20 +2034,10 @@ function removeEnemy(e,owner){
   if(idx<0)return;
   scene.remove(e.group);
   enemies.splice(idx,1);
-  // Elves on Christmas Workshop drop exploding presents when defeated!
-  if(e.isXmas&&phase==="play"){
-    if(e.kind==="bomber"||e.boss||Math.random()<.55){
-      spawnMine(e.x,e.z,true);
-      if(e.boss){
-        spawnMine(e.x+1.6,e.z+1.2,true);
-        spawnMine(e.x-1.6,e.z-1.2,true);
-      }
-    }
-  }
   if(e.kind==="splitter"&&!e.splitChild&&phase==="play"){
     spawnEnemy(false,"runner",true,{x:e.x-.65,z:e.z});
     spawnEnemy(false,"runner",true,{x:e.x+.65,z:e.z});
-    showToast(e.isXmas?"A Twin Elf split into two Jingle Elves!":"A Splitter made two little runners!");
+    showToast("A Splitter made two little runners!");
   }
   score+=e.boss?750:100;
   rewardCoins(owner,e.boss?250:25);
@@ -2702,8 +2284,7 @@ function updatePlayer(dt){
 
     if(move.lengthSq()>0){
       move.normalize();
-      const chillSlow=player.chillTimer>0?.58:1;
-      const speed=player.speed*(keys.ControlLeft||keys.ControlRight?1.5:1)*chillSlow;
+      const speed=player.speed*(keys.ControlLeft||keys.ControlRight?1.5:1);
       const nx=player.x+move.x*speed*dt;
       const nz=player.z+move.z*speed*dt;
 
@@ -2719,11 +2300,83 @@ function updatePlayer(dt){
   }
 
   player.vy-=22*dt;
-function spawnFireball(x,y,z,vel,dmg,kind="fire"){
-  const g=makeFireballMesh(kind);
+  player.y+=player.vy*dt;
+
+  if(player.y<0){
+    player.y=0;
+    player.vy=0;
+  }
+
+  camera.position.set(player.x,1.7+player.y,player.z);
+  camera.rotation.set(player.pitch,player.yaw,0,"YXZ");
+}
+
+/* ---------- Monsters ---------- */
+
+function updateFields(dt){
+  fieldTimer-=dt;
+  if(fieldTimer>0)return;
+  fieldTimer=.3;
+  if(!enemies.length)return;
+  for(const p of allPlayers()){
+    if(!p.alive)continue;
+    let f=fields.get(p.id);
+    if(!f){
+      f={dist:new Uint16Array(NAVN*NAVN),ok:false};
+      fields.set(p.id,f);
+    }
+    f.ok=computeField(f.dist,p.x,p.z);
+  }
+}
+
+function fieldFor(p){
+  const f=fields.get(p.id);
+  return f&&f.ok?f.dist:null;
+}
+
+function stepEnemy(e,p,dist,dt){
+  const sp=e.speed;
+  let mx=p.x-e.x;
+  let mz=p.z-e.z;
+  const direct=e.los&&dist<9;
+
+  if(!direct){
+    const f=fieldFor(p);
+    if(f){
+      const ci=Math.floor(e.x-NAVO);
+      const cj=Math.floor(e.z-NAVO);
+      if(ci>=0&&cj>=0&&ci<NAVN&&cj<NAVN){
+        const here=f[cj*NAVN+ci];
+        let best=here,bi=ci,bj=cj;
+        for(let k=0;k<8;k++){
+          const ni=ci+DIRS[k][0];
+          const nj=cj+DIRS[k][1];
+          if(ni<0||nj<0||ni>=NAVN||nj>=NAVN)continue;
+          const n=nj*NAVN+ni;
+          if(navBlocked[n])continue;
+          if(k>=4&&(navBlocked[cj*NAVN+ni]||navBlocked[nj*NAVN+ci]))continue;
+          if(f[n]<best){best=f[n];bi=ni;bj=nj;}
+        }
+        if(bi!==ci||bj!==cj){
+          mx=NAVO+bi+.5-e.x;
+          mz=NAVO+bj+.5-e.z;
+        }
+      }
+    }
+  }
+
+  const len=Math.hypot(mx,mz);
+  if(len>1e-4){
+    e.x+=mx/len*sp*dt;
+    e.z+=mz/len*sp*dt;
+  }
+}
+
+function spawnFireball(x,y,z,vel,dmg){
+  const g=makeFireballMesh();
   g.position.set(x,y,z);
   scene.add(g);
-  fireballs.push({mesh:g,vel,life:4.5,damage:dmg,kind});
+  fireballs.push({mesh:g,vel,life:4.5,damage:dmg});
 }
 
 function launchFireball(e){
@@ -2734,24 +2387,13 @@ function launchFireball(e){
   const tx=p.x+(Math.random()-.5)*.8;
   const ty=p.y+1.1;
   const tz=p.z+(Math.random()-.5)*.8;
-  const volley=e.boss?[-.28,-.12,0,.12,.28]:[0];
+  const volley=e.boss?[-.22,0,.22]:[0];
 
-  volley.forEach((a,idx)=>{
+  volley.forEach(a=>{
     const dx=tx-ox,dy=ty-oy,dz=tz-oz;
     const c=Math.cos(a),s=Math.sin(a);
     const v=new THREE.Vector3(dx*c-dz*s,dy,dx*s+dz*c).normalize().multiplyScalar(e.fbSpeed);
-    let projKind="fire";
-    let dmg=e.fbDamage;
-    if(e.isXmas){
-      // Frost Elves & Santa throw Ice Balls (faster, frost damage + chill), other Elves throw Snowballs!
-      if(e.kind==="spitter"||(e.boss&&idx%2===1)){
-        projKind="ice";
-        dmg=Math.round(e.fbDamage*1.2);
-      }else{
-        projKind="snow";
-      }
-    }
-    spawnFireball(ox,oy,oz,v,dmg,projKind);
+    spawnFireball(ox,oy,oz,v,e.fbDamage);
   });
 }
 
@@ -2764,13 +2406,13 @@ function updateEnemies(dt,time){
     const p=t.p,dist=t.d;
     e.losTimer-=dt;
     if(e.losTimer<=0){e.los=losClear(e.x,e.z,p.x,p.z,1.4);e.losTimer=.2+Math.random()*.1;}
-    const caster=e.caster!==undefined?e.caster:(e.kind==="spitter"||e.boss);
+    const caster=e.kind==="spitter"||e.boss;
     let acting=false;
 
     if(e.kind==="bomber"&&dist<3.1){
       e.attackTimer-=dt;
       if(e.attackTimer<=0){
-        boom(e.x,1,e.z,e.explodeRadius,e.isXmas?0xff3b4e:0xff9a3c);
+        boom(e.x,1,e.z,e.explodeRadius);
         if(dist<e.explodeRadius)damagePlayerRec(p,Math.max(8,16+wave));
         scene.remove(e.group);enemies.splice(i,1);score+=90;rewardCoins(p.id,20);
         continue;
@@ -2779,39 +2421,22 @@ function updateEnemies(dt,time){
     if(e.windup>0){e.windup-=dt;acting=true;if(e.windup<=0)launchFireball(e);}
     else if(caster){
       e.castTimer-=dt;
-      const castRange=e.boss?40:(e.kind==="spitter"?30:22);
-      if(e.castTimer<=0&&e.los&&dist>5&&dist<castRange){
-        e.windup=.5;
-        e.castTimer=(e.boss?1.8:Math.max(1.6,3.4-wave*.06))+Math.random()*1.2;
-        acting=true;
+      if(e.castTimer<=0&&e.los&&dist>5&&dist<(e.boss?38:28)){
+        e.windup=.55;e.castTimer=(e.boss?2.1:Math.max(1.7,3.5-wave*.07))+Math.random();acting=true;
       }
     }
 
-    if(e.mineTimer>0&&(e.isXmas||e.kind==="spitter"||e.boss)){
+    if(e.kind==="spitter"||e.boss){
       e.mineTimer-=dt;
-      if(e.mineTimer<=0&&dist>4.5){
-        spawnMine(e.x,e.z,e.isXmas);
-        e.mineTimer=e.boss?4.8+Math.random()*2.5:7.5+Math.random()*4;
-      }
+      if(e.mineTimer<=0&&dist>5){spawnMine(e.x,e.z);e.mineTimer=e.boss?7+Math.random()*3:8+Math.random()*4;}
     }
     if(e.boss){
       e.specialTimer-=dt;
       if(e.specialTimer<=0){
-        boom(e.x,.4,e.z,6.2,e.isXmas?0x7ae8ff:0xff9a3c);
-        if(dist<6.2){
-          damagePlayerRec(p,12+Math.floor(wave*.7));
-          if(e.isXmas&&p===player)player.chillTimer=2.5;
-        }
-        if(e.isXmas){
-          // Santa drops exploding presents around himself during his sleigh-bell shockwave!
-          spawnMine(e.x+2.2,e.z,true);
-          spawnMine(e.x-2.2,e.z,true);
-          spawnMine(e.x,e.z+2.2,true);
-          showToast("🎅 Santa dropped exploding presents!");
-        }else{
-          showToast("Boss shockwave!");
-        }
+        boom(e.x,.4,e.z,5.8);
+        if(dist<5.8)damagePlayerRec(p,12+Math.floor(wave*.7));
         e.specialTimer=Math.max(4.5,8-wave*.06);
+        showToast("Boss shockwave!");
       }
     }
     e.wind=e.windup>0;
@@ -2831,59 +2456,21 @@ function updateEnemies(dt,time){
   }
 }
 
-function spawnMine(x,z,isPresent=false){
+function spawnMine(x,z){
   const g=new THREE.Group();
-  if(isPresent||currentMapId==="xmas"){
-    // Festive Exploding Present box with golden ribbon & blinking top bow!
-    const wrapColors=[0xd62828,0x1e8449,0x2b7de9,0x9b5de5];
-    const boxColor=wrapColors[Math.floor((Math.abs(x*7+z*13))%wrapColors.length)];
-    const giftBox=new THREE.Mesh(
-      new THREE.BoxGeometry(.72,.64,.72),
-      new THREE.MeshStandardMaterial({color:boxColor,roughness:.5})
-    );
-    giftBox.position.y=.32;
-    const rib1=new THREE.Mesh(new THREE.BoxGeometry(.75,.66,.16),materials.xmasGold);
-    rib1.position.y=.32;
-    const rib2=new THREE.Mesh(new THREE.BoxGeometry(.16,.66,.75),materials.xmasGold);
-    rib2.position.y=.32;
-    const bow=new THREE.Mesh(new THREE.SphereGeometry(.16,10,8),new THREE.MeshBasicMaterial({color:0xffe45e}));
-    bow.position.y=.72;
-    g.add(giftBox,rib1,rib2,bow);
-    g.position.set(x,0,z);
-    scene.add(g);
-    mines.push({mesh:g,x,z,life:15,blink:0,isPresent:true,lightMesh:bow});
-  }else{
-    const base=new THREE.Mesh(new THREE.CylinderGeometry(.48,.52,.16,16),new THREE.MeshStandardMaterial({color:0x343b4b,metalness:.55,roughness:.45}));
-    const light=new THREE.Mesh(new THREE.SphereGeometry(.13,10,8),new THREE.MeshBasicMaterial({color:0xff594d}));
-    light.position.y=.18;g.add(base,light);g.position.set(x,.08,z);scene.add(g);
-    mines.push({mesh:g,x,z,life:16,blink:0,isPresent:false,lightMesh:light});
-  }
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(.48,.52,.16,16),new THREE.MeshStandardMaterial({color:0x343b4b,metalness:.55,roughness:.45}));
+  const light=new THREE.Mesh(new THREE.SphereGeometry(.13,10,8),new THREE.MeshBasicMaterial({color:0xff594d}));
+  light.position.y=.18;g.add(base,light);g.position.set(x,.08,z);scene.add(g);
+  mines.push({mesh:g,x,z,life:16,blink:0});
 }
 
 function updateMines(dt){
   for(let i=mines.length-1;i>=0;i--){
     const m=mines[i];m.life-=dt;m.blink+=dt;
-    const pulse=Math.sin(m.blink*(m.life<3?18:9))>0;
-    if(m.isPresent){
-      m.lightMesh.material.color.setHex(pulse?0xff3b4e:0xffe45e);
-      m.mesh.rotation.y+=dt*1.4;
-    }else{
-      m.lightMesh.material.color.setHex(pulse?0xff594d:0xffc14d);
-    }
+    m.mesh.children[1].material.color.setHex(Math.sin(m.blink*9)>0?0xff594d:0xffc14d);
     let trigger=m.life<=0;
-    const trigDist=m.isPresent?1.85:1.45;
-    for(const p of allPlayers()){
-      if(p.alive&&Math.hypot(p.x-m.x,p.z-m.z)<trigDist){
-        damagePlayerRec(p,16+Math.floor(wave*.6));
-        trigger=true;
-        break;
-      }
-    }
-    if(trigger){
-      boom(m.x,.45,m.z,m.isPresent?2.9:2.2,m.isPresent?0xff3b4e:0xff9a3c);
-      scene.remove(m.mesh);
-      mines.splice(i,1);
-    }
+    for(const p of allPlayers())if(p.alive&&Math.hypot(p.x-m.x,p.z-m.z)<1.45){damagePlayerRec(p,14+Math.floor(wave*.5));trigger=true;break;}
+    if(trigger){boom(m.x,.3,m.z,2.2);scene.remove(m.mesh);mines.splice(i,1);}
   }
 }
 
@@ -2891,7 +2478,6 @@ function updateFireballs(dt){
   for(let i=fireballs.length-1;i>=0;i--){
     const f=fireballs[i];
     f.mesh.position.addScaledVector(f.vel,dt);
-    if(f.kind==="ice")f.mesh.rotation.y+=dt*6;
     f.life-=dt;
     const pos=f.mesh.position;
 
@@ -2905,10 +2491,6 @@ function updateFireballs(dt){
         const dy=(p.y+1.0)-pos.y;
         if(dx*dx+dz*dz<.7*.7&&Math.abs(dy)<1.1){
           damagePlayerRec(p,f.damage);
-          if(p===player&&(f.kind==="snow"||f.kind==="ice")){
-            player.chillTimer=f.kind==="ice"?2.2:1.1;
-            showToast(f.kind==="ice"?"❄️ Chilled by an Ice Ball!":"⛄ Hit by a Snowball!");
-          }
           dead=true;
           break;
         }
@@ -2916,8 +2498,7 @@ function updateFireballs(dt){
     }
 
     if(dead){
-      const boomCol=f.kind==="ice"?0x5ceeff:(f.kind==="snow"?0xeaf8ff:0xff9a3c);
-      boom(pos.x,pos.y,pos.z,f.kind==="ice"?1.35:1.1,boomCol);
+      boom(pos.x,pos.y,pos.z,1.1);
       scene.remove(f.mesh);
       fireballs.splice(i,1);
     }
@@ -3037,7 +2618,6 @@ function resetLocalPlayer(spawnIdx){
   player.yaw=0;
   player.pitch=0;
   player.invulnerable=0;
-  player.chillTimer=0;
   player.ready=false;
   player.lastShot=0;
   weaponHTMLCache="";
@@ -3347,12 +2927,11 @@ function buildSnapshot(){
     r2(p.mesh.position.x),r2(p.mesh.position.y),r2(p.mesh.position.z),p.type
   ]);
   const fb=fireballs.slice(0,60).map(f=>[
-    r2(f.mesh.position.x),r2(f.mesh.position.y),r2(f.mesh.position.z),
-    f.kind==="ice"?2:(f.kind==="snow"?1:0)
+    r2(f.mesh.position.x),r2(f.mesh.position.y),r2(f.mesh.position.z)
   ]);
   return {
     t:"s",map:currentMapId,w:wave,sc:score,rem:enemies.length+spawnLeft,ph:phase,
-    pl,en,pr,fb,mn:mines.map(m=>[r2(m.x),r2(m.z),r2(m.life),m.isPresent?1:0]),ev:pendingBooms.slice()
+    pl,en,pr,fb,mn:mines.map(m=>[r2(m.x),r2(m.z),r2(m.life)]),ev:pendingBooms.slice()
   };
 }
 
@@ -3561,15 +3140,12 @@ function applySnapshot(s){
     let e=clientEnemies.get(a[0]);
     if(!e){
       const boss=!!a[5];
-      const isXmas=currentMapId==="xmas";
       const kind=ENEMY_INDEX_TYPE[a[9]]|| (boss?"boss":"runner");
-      const color=isXmas?(ELF_COLORS[kind]||ELF_COLORS.boss):(ENEMY_COLORS[kind]||0xe34b70);
-      const theme=isXmas?(boss?"santa":"elf"):"default";
-      const model=makeHumanoid(color,boss,false,a[7]===1,theme);
-      if(!boss)model.group.scale.setScalar(kind==="tank"?1.26:kind==="runner"?.82:kind==="brute"?1.14:1);
-      const labelText=isXmas?(ELF_NAMES[kind]||"ELF"):(kind==="boss"?"BOSS":kind.toUpperCase());
-      const tag=makeLabel(labelText);
-      tag.position.y=boss?4.6:3.2;tag.scale.set(2.0,.48,1);model.group.add(tag);
+      const color=ENEMY_COLORS[kind]||0xe34b70;
+      const model=makeHumanoid(color,boss,false,a[7]===1);
+      if(!boss)model.group.scale.setScalar(kind==="tank"?1.28:kind==="runner"?.82:kind==="brute"?1.16:1);
+      const tag=makeLabel(kind==="boss"?"BOSS":kind.toUpperCase());
+      tag.position.y=boss?4.4:3.1;tag.scale.set(1.8,.45,1);model.group.add(tag);
       model.group.position.set(a[1],0,a[2]);
       scene.add(model.group);
       e={...model,id:a[0],x:a[1],z:a[2],tx:a[1],tz:a[2],hp:a[3],maxHp:a[4],boss,phase:a[0]*1.7,wind:false};
@@ -3612,20 +3188,12 @@ function applySnapshot(s){
   }
 
   while(clientFire.length<s.fb.length){
-    const g=makeFireballMesh("fire");
-    g.userData.kind=0;
+    const g=makeFireballMesh();
     scene.add(g);
     clientFire.push(g);
   }
   for(let i=0;i<clientFire.length;i++){
     if(i<s.fb.length){
-      const fk=s.fb[i][3]||0;
-      if(clientFire[i].userData.kind!==fk){
-        scene.remove(clientFire[i]);
-        clientFire[i]=makeFireballMesh(fk===2?"ice":(fk===1?"snow":"fire"));
-        clientFire[i].userData.kind=fk;
-        scene.add(clientFire[i]);
-      }
       clientFire[i].visible=true;
       clientFire[i].position.set(s.fb[i][0],s.fb[i][1],s.fb[i][2]);
     }else{
@@ -3635,10 +3203,10 @@ function applySnapshot(s){
 
   if(mode==="client"&&Array.isArray(s.mn)){
     for(const m of mines)scene.remove(m.mesh);mines=[];
-    for(const a of s.mn)spawnMine(a[0],a[1],!!a[3]);
+    for(const a of s.mn)spawnMine(a[0],a[1]);
   }
   for(const ev of s.ev){
-    addExplosion(ev[0],ev[1],ev[2],ev[3],ev[4]||0xff9a3c);
+    addExplosion(ev[0],ev[1],ev[2],ev[3]);
   }
 
   if(phase==="upgrade"&&prevPhase!=="upgrade"){
@@ -3800,9 +3368,6 @@ function animate(now){
     if(toastTimer>0){
       toastTimer-=dt;
       if(toastTimer<=0)$("toast").textContent="";
-    }
-    if(player.chillTimer>0){
-      player.chillTimer=Math.max(0,player.chillTimer-dt);
     }
 
     if(mode==="solo"){
